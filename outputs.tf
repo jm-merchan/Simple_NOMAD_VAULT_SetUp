@@ -43,7 +43,7 @@ output "retrieve_vault_token" {
 
 output "retrieve_nomad_token" {
   description = "Command to retrieve Nomad ACL bootstrap token from AWS Secret Manager"
-  value       = "aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-${random_string.random_name.result} --region ${var.region} --output text --query SecretString | jq -r .SecretID"
+  value       = "aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-${random_string.random_name.result} --region ${var.region} --output text --query SecretString"
 }
 
 output "nomad_address" {
