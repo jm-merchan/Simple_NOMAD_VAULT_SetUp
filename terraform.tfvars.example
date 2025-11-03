@@ -1,0 +1,48 @@
+# AWS Configuration
+region            = "eu-west-2"
+dns_zone_name_ext = "jose-merchan.sbx.hashidemos.io"
+
+# Network Configuration
+vpc_cidr    = "10.0.0.0/16"
+subnet_cidr = "10.0.1.0/24"
+
+# SSH Key Pair (create this in AWS first)
+key_pair_name = "my-key-pair"
+
+# Vault Server Configuration
+vault_server = {
+  name           = "vault-server-prod"
+  instance_type  = "m6.2xlarge"
+  environment    = "production"
+  application    = "vault-app"
+  license_key    = "vault-key-goes-here"
+  volume_size    = 20
+  custom_message = "Welcome to Production Vault Server - HashiCorp Vault Service"
+  vault_version  = "1.20.4+ent"
+  additional_tags = {
+    Backup     = "daily"
+    Owner      = "team-security"
+    Project    = "vault-infrastructure"
+    CostCenter = "security"
+    Role       = "vaultserver"
+  }
+}
+
+# Vault Benchmark Configuration
+vault_benchmark = {
+  name           = "vault-benchmark-prod"
+  instance_type  = "t3.xlarge"
+  environment    = "production"
+  application    = "vault-benchmark"
+  volume_size    = 30
+  custom_message = "Welcome to Production Vault Benchmark Server - Performance Testing Suite"
+  additional_tags = {
+    Backup     = "hourly"
+    Owner      = "team-performance"
+    Project    = "vault-benchmarking"
+    CostCenter = "engineering"
+    Role       = "benchmarkserver"
+  }
+}
+
+owner_email = "email@example.com"
