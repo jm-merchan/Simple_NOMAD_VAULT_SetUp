@@ -123,48 +123,22 @@ terraform output service_urls
 
 1. **Retrieve Root Token**:
 ```bash
-terraform output -raw retrieve_vault_token | bash
+export VAULT_TOKEN=$(aws secretsmanager get-secret-value --secret-id initSecret-nmpb --region eu-west-2 --output text --query SecretString | jq -r .root_token)
 ```
 
 2. **Access Vault UI**:
 ```bash
 # Get URL from outputs
-terraform output service_urls
+export VAULT_ADDR=$(terraform output -json | jq -r .service_urls.value.vault_server.fqdn_url)
 
 # Example: https://vault-eu-west-2-xxxx.example.com:8200
 ```
 
 3. **Configure CLI**:
 ```bash
-export VAULT_ADDR="https://vault-eu-west-2-xxxx.example.com:8200"
-export VAULT_TOKEN="s.xxxxxxxxxxxxxxxx"
 vault status
 ```
 
-### Nomad Access
-
-1. **Retrieve Bootstrap Token**:
-```bash
-terraform output -raw retrieve_nomad_token | bash
-```
-
-2. **Access Nomad UI**:
-```bash
-# Get URL from outputs
-terraform output nomad_address
-
-# Example: https://nomad-eu-west-2-xxxx.example.com:4646
-```
-
-3. **Configure CLI**:
-```bash
-# SSH to Nomad server
-terraform output -raw ssh_connection_commands | jq -r .nomad_server | bash
-
-# Environment is already configured
-export NOMAD_TOKEN="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-nomad status
-```
 
 ## SSH Access
 

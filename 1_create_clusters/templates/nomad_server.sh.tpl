@@ -248,7 +248,7 @@ acl {
 }
 
 vault {
-  enabled          = false
+  enabled          = true
   address          = "https://${vault_address}:8200"
   default_identity {
     aud = ["vault.io"]

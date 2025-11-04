@@ -30,8 +30,9 @@ output "service_urls" {
       fqdn_url  = "https://vault-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}:8200"
     }
     nomad_server = {
-      https_url = "https://${aws_eip.nomad_server_eip.public_ip}:4646"
-      fqdn_url  = "https://nomad-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}:4646"
+      direct_https_url = "https://${aws_eip.nomad_server_eip.public_ip}:4646"
+      alb_https_url    = "https://${aws_lb.nomad_alb.dns_name}"
+      fqdn_url         = "https://nomad-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}"
     }
   }
 }
@@ -49,11 +50,13 @@ output "retrieve_nomad_token" {
 output "nomad_address" {
   description = "Nomad server address and connection information"
   value = {
-    public_ip    = aws_eip.nomad_server_eip.public_ip
-    https_url    = "https://${aws_eip.nomad_server_eip.public_ip}:4646"
-    fqdn         = aws_route53_record.nomad.fqdn
-    fqdn_url     = "https://${aws_route53_record.nomad.fqdn}:4646"
-    datacenter   = var.nomad_server.datacenter
-    region       = var.nomad_server.datacenter
+    public_ip        = aws_eip.nomad_server_eip.public_ip
+    direct_https_url = "https://${aws_eip.nomad_server_eip.public_ip}:4646"
+    alb_dns_name     = aws_lb.nomad_alb.dns_name
+    alb_https_url    = "https://${aws_lb.nomad_alb.dns_name}"
+    fqdn             = aws_route53_record.nomad.fqdn
+    fqdn_url         = "https://${aws_route53_record.nomad.fqdn}"
+    datacenter       = var.nomad_server.datacenter
+    region           = var.nomad_server.datacenter
   }
 }

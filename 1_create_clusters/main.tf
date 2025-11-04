@@ -68,7 +68,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Create a subnet
+# Create first public subnet
 resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.subnet_cidr
@@ -76,7 +76,24 @@ resource "aws_subnet" "main" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "main-subnet"
+    Name = "public-subnet-az1"
+  }
+}
+
+# Alias for backward compatibility
+locals {
+  public_subnet_id = aws_subnet.main.id
+}
+
+# Create a second subnet in a different AZ for ALB
+resource "aws_subnet" "public_az2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, 2)
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet-az2"
   }
 }
 
@@ -97,6 +114,12 @@ resource "aws_route_table" "main" {
 # Associate the route table with the subnet
 resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.main.id
+  route_table_id = aws_route_table.main.id
+}
+
+# Associate the route table with the second subnet
+resource "aws_route_table_association" "public_az2" {
+  subnet_id      = aws_subnet.public_az2.id
   route_table_id = aws_route_table.main.id
 }
 
