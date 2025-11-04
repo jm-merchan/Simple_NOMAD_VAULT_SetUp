@@ -185,9 +185,6 @@ export TF_VAR_nomad_server_address=$(echo $NOMAD_ADDR)
 3. **Verify**:
 ```bash
 nomad status
-
-# Check certificate is valid (should show Let's Encrypt)
-curl -v $NOMAD_ADDR/v1/status/leader 2>&1 | grep "issuer:"
 ```
 
 #### Access Methods
