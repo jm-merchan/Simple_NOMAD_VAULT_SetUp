@@ -146,7 +146,7 @@ terraform output nomad_certificate_debug
 
 1. **Retrieve Root Token**:
 ```bash
-export VAULT_TOKEN=$(aws secretsmanager get-secret-value --secret-id initSecret-nmpb --region eu-west-2 --output text --query SecretString | jq -r .root_token)
+export VAULT_TOKEN=$(eval $(terraform output -raw retrieve_vault_token))
 ```
 
 2. **Retrieve Vault URL***:
@@ -167,16 +167,13 @@ vault status
 
 1. **Retrieve Nomad Bootstrap Token**:
 ```bash
-export NOMAD_TOKEN=$(aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-nmpb --region eu-west-2 --output text --query SecretString)
+export NOMAD_TOKEN=$(eval $(terraform output -raw retrieve_nomad_token))
 ```
 
 2. **Retrieve Nomad URL**: 
 ```bash
 # Get FQDN URL (via ALB with valid Let's Encrypt certificate)
 export NOMAD_ADDR=$(terraform output -json | jq -r .service_urls.value.nomad_server.fqdn_url) 
-
-# Or get ALB URL directly
-export NOMAD_ADDR=$(terraform output -json nomad_alb_info | jq -r .alb_https_url)
 
 # Create Terraform env for Nomad configuration in following step
 export TF_VAR_nomad_server_address=$(echo $NOMAD_ADDR) 
