@@ -7,25 +7,44 @@ This Terraform project deploys a complete HashiCorp infrastructure stack on AWS,
 ## Architecture
 
 ### Infrastructure Components
-- **VPC** with public subnet
+- **VPC** with public subnets across 2 availability zones
 - **Vault Server** - Single node with auto-unseal (AWS KMS)
 - **Nomad Server** - Single node with Docker driver support
-- **TLS Certificates** - Let's Encrypt for Vault, self-signed for Nomad
+- **Application Load Balancer (ALB)** - Layer 7 load balancer for Nomad with TLS termination
+- **TLS Certificates** - Let's Encrypt (ACME) for both Vault and Nomad (via ALB)
 - **DNS** - Route53 records for both services
 - **Security** - IAM roles, security groups, ACLs enabled
 
 ### Features
 - ✅ Vault Enterprise with AWS KMS auto-unseal
 - ✅ Nomad Enterprise with Docker task driver
+- ✅ Application Load Balancer with Let's Encrypt certificate for Nomad
 - ✅ Automatic TLS/mTLS configuration
+  - Vault: Let's Encrypt certificates (direct)
+  - Nomad: Let's Encrypt on ALB, self-signed internally
 - ✅ ACL systems enabled and bootstrapped
 - ✅ Secure credential storage in AWS Secrets Manager
 - ✅ Bridge networking for container workloads
 - ✅ Automated initialization and bootstrap
 
+### Network Architecture
+
+```
+Client → HTTPS (Let's Encrypt) → ALB:443 → HTTPS (self-signed) → Nomad:4646
+                                ALB:4646 → HTTPS (self-signed) → Nomad:4646
+
+Client → HTTPS (Let's Encrypt) → Vault:8200
+```
+
+**Nomad Access:**
+- External clients connect to ALB using valid Let's Encrypt certificate
+- ALB terminates TLS and re-encrypts to backend
+- Nomad server uses self-signed certificates internally
+- DNS: `nomad-region-xxxx.domain.com` → ALB → Nomad Server
+
 ## Prerequisites
 
-1. **Terraform** >= 1.0
+1. **Terraform** >= 1.11
 2. **AWS Account** with appropriate permissions
 3. **Domain** registered in Route53
 4. **License Keys**:
@@ -88,8 +107,9 @@ nomad_license_expires = "2026-12-31"
 ### 1. Authenticate against AWS via Doormat and Initialize Terraform
 
 ```bash
+cd 1_create_clusters
 doormat login -f
-eval $(doormat aws -a aws_jose.merchan_test export)
+eval $(doormat aws -a <account_name> export)
 
 terraform init
 ```
@@ -112,9 +132,12 @@ terraform apply -auto-approve -var-file=terraform.tfvars
 # Get all outputs
 terraform output
 
-# Specific outputs
+# Nomad specific outputs
 terraform output nomad_address
-terraform output service_urls
+terraform output nomad_alb_info
+
+# Certificate debug info
+terraform output nomad_certificate_debug
 ```
 
 ## Post-Deployment Access
@@ -126,7 +149,7 @@ terraform output service_urls
 export VAULT_TOKEN=$(aws secretsmanager get-secret-value --secret-id initSecret-nmpb --region eu-west-2 --output text --query SecretString | jq -r .root_token)
 ```
 
-2. **Access Vault UI**:
+2. **Retrieve Vault URL***:
 ```bash
 # Get URL from outputs
 export VAULT_ADDR=$(terraform output -json | jq -r .service_urls.value.vault_server.fqdn_url)
@@ -134,75 +157,98 @@ export VAULT_ADDR=$(terraform output -json | jq -r .service_urls.value.vault_ser
 # Example: https://vault-eu-west-2-xxxx.example.com:8200
 ```
 
-3. **Configure CLI**:
+3. **Verify**:
 ```bash
 vault status
 ```
 
 
-## SSH Access
+### Nomad Access
 
-Connect to instances:
-
+1. **Retrieve Nomad Bootstrap Token**:
 ```bash
-# Vault server
-ssh -i vault-private-key.pem ec2-user@<vault-ip>
-
-# Nomad server
-ssh -i vault-private-key.pem ec2-user@<nomad-ip>
+export NOMAD_TOKEN=$(aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-nmpb --region eu-west-2 --output text --query SecretString)
 ```
 
-## Nomad Usage Examples
+2. **Retrieve Nomad URL**: 
+```bash
+# Get FQDN URL (via ALB with valid Let's Encrypt certificate)
+export NOMAD_ADDR=$(terraform output -json | jq -r .service_urls.value.nomad_server.fqdn_url) 
 
-### Run a Simple Job
+# Or get ALB URL directly
+export NOMAD_ADDR=$(terraform output -json nomad_alb_info | jq -r .alb_https_url)
+
+# Create Terraform env for Nomad configuration in following step
+export TF_VAR_nomad_server_address=$(echo $NOMAD_ADDR) 
+```
+
+3. **Verify**:
+```bash
+nomad status
+
+# Check certificate is valid (should show Let's Encrypt)
+curl -v $NOMAD_ADDR/v1/status/leader 2>&1 | grep "issuer:"
+```
+
+#### Access Methods
+
+**Via Application Load Balancer (Recommended)**
+- URL: `https://nomad-region-xxxx.domain.com` (port 443 or 4646)
+- Certificate: Valid Let's Encrypt certificate
+- No certificate warnings in browser or CLI
+
+**Direct to Server (Advanced)**
+- URL: `https://<nomad-ip>:4646`
+- Certificate: Self-signed (will show warnings)
+- Requires accepting self-signed certificate or adding CA to trust store
+
+### 4. Create Workload Identity federation
+This terraform configuration file:
+* Configures Vault for JWT authentication with Nomad and creates a KVv2 engine with a secret.
+* Deploy a Nomad Job that uses the default JWT Authentication with Vault and retrieves the secret from Vault
+
+![enviromental variables in resulting job](image.png)
+
+The execution is as follow
 
 ```bash
-# Create a simple job
-cat > example.nomad <<EOF
-job "nginx" {
-  datacenters = ["dc1"]
-  type = "service"
+cd ../2_workload_identity
+terraform init
+terraform plan
+terraform apply -auto-approve
 
-  group "web" {
-    count = 1
-
-    task "nginx" {
-      driver = "docker"
-
-      config {
-        image = "nginx:latest"
-        ports = ["http"]
-      }
-
-      resources {
-        cpu    = 500
-        memory = 256
-      }
-    }
-
-    network {
-      port "http" {
-        static = 8080
-      }
-    }
-  }
-}
-EOF
-
-# Run the job
-nomad job run example.nomad
-
-# Check status
-nomad job status nginx
 ```
 
 ## Security
 
 ### TLS/mTLS Configuration
 
-- **Vault**: Uses Let's Encrypt certificates
-- **Nomad**: Uses self-signed certificates with mTLS
-- All communication is encrypted
+#### Vault
+- Uses Let's Encrypt (ACME) certificates
+- Certificates stored in AWS Secrets Manager
+- Direct TLS termination on Vault server
+
+#### Nomad
+- **External Access**: Let's Encrypt (ACME) certificate on Application Load Balancer
+  - ALB performs TLS termination with valid public certificate
+  - Certificate automatically imported to AWS Certificate Manager (ACM)
+  - Accessible via HTTPS on port 443 and 4646
+- **Internal Communication**: Self-signed certificates
+  - Nomad server uses self-signed certs generated via `nomad tls` commands
+  - mTLS between ALB and Nomad backend
+  - Client certificates for CLI access
+
+#### Certificate Storage
+- **Vault Certificates**: AWS Secrets Manager
+  - `vault-tls-certificate-*` - Public certificate
+  - `vault-tls-private-key-*` - Private key
+  - `vault-tls-ca-certificate-*` - CA chain
+- **Nomad Certificates**: 
+  - Let's Encrypt cert stored in AWS Secrets Manager and ACM
+  - `nomad-tls-certificate-*` - Public certificate
+  - `nomad-tls-private-key-*` - Private key  
+  - `nomad-tls-ca-certificate-*` - CA chain
+  - Self-signed certs stored locally on Nomad server (`/opt/nomad/tls/`)
 
 ### ACL Systems
 
@@ -217,19 +263,8 @@ Both Vault and Nomad have ACL systems enabled:
 The deployment creates minimal IAM roles with:
 - Secrets Manager access for licenses and certificates
 - KMS access for Vault auto-unseal
-- SSM Parameter Store for benchmark results
 
 ## Monitoring & Logs
-
-### Check Service Status
-
-```bash
-# Vault
-ssh ec2-user@<vault-ip> 'sudo systemctl status vault'
-
-# Nomad
-ssh ec2-user@<nomad-ip> 'sudo systemctl status nomad'
-```
 
 ### View Logs
 
@@ -241,71 +276,70 @@ ssh ec2-user@<nomad-ip> 'cat /var/log/nomad-install.log'
 ssh ec2-user@<nomad-ip> 'sudo journalctl -u nomad -f'
 ```
 
-## Troubleshooting
-
-### Vault Issues
-
-1. **Vault Sealed**: Check KMS permissions
-2. **TLS Errors**: Verify Let's Encrypt certificates in Secrets Manager
-3. **Init Failed**: Check `/var/log/vault.log`
-
-### Nomad Issues
-
-1. **TLS Certificate Errors**: 
-   - Verify region matches datacenter in config
-   - Check certificates: `ls -la /opt/nomad/tls/`
-
-2. **Docker Not Available**:
-   ```bash
-   sudo systemctl status docker
-   sudo systemctl start docker
-   ```
-
-3. **ACL Bootstrap Failed**:
-   ```bash
-   # Re-run bootstrap script
-   /home/ec2-user/bootstrap-nomad-acl.sh
-   ```
-
-## Cleanup
-
-To destroy all resources:
+### Verify ALB Health
 
 ```bash
-terraform destroy
+# Check ALB target health
+aws elbv2 describe-target-health \
+  --target-group-arn $(terraform output -json nomad_alb_info | jq -r .target_group_arn) \
+  --region eu-west-2
+
+# Check ALB listeners
+aws elbv2 describe-listeners \
+  --load-balancer-arn $(terraform output -json nomad_alb_info | jq -r .alb_arn) \
+  --region eu-west-2
+
+# Verify certificate in ACM
+aws acm describe-certificate \
+  --certificate-arn $(terraform output -json nomad_alb_info | jq -r .acm_cert_arn) \
+  --region eu-west-2
 ```
 
-**Note**: This will delete all resources including:
-- EC2 instances
-- Elastic IPs
-- Secrets in Secrets Manager (after 7-day recovery window)
-- Route53 records
-- VPC and networking
+## Troubleshooting
 
-## Architecture Decisions
+### Nomad Certificate Issues
 
-### Why Single Node?
+**Problem**: Browser shows certificate warning when accessing Nomad
 
-This deployment uses single-node setups for simplicity. For production:
-- Deploy 3-5 Vault servers with Raft storage
-- Deploy 3-5 Nomad servers for high availability
-- Separate Nomad clients for workload execution
+**Solution**: 
+1. Ensure you're using the ALB URL (FQDN), not direct IP:
+   ```bash
+   terraform output nomad_address
+   # Use fqdn_url, not direct_https_url
+   ```
 
-### Why Docker Instead of Podman?
+2. Check certificate status:
+   ```bash
+   terraform output nomad_certificate_debug
+   terraform output nomad_alb_info
+   ```
 
-Docker is readily available in Amazon Linux 2 repositories. Podman requires additional configuration and is not easily available.
+3. Verify DNS propagation:
+   ```bash
+   nslookup nomad-region-xxxx.domain.com
+   # Should return ALB DNS name
+   ```
 
-### Why Root for Nomad?
+4. Test certificate chain:
+   ```bash
+   openssl s_client -connect nomad-region-xxxx.domain.com:443 -showcerts
+   ```
 
-Nomad clients require root privileges for:
-- Creating mount points and namespaces
-- Managing cgroups
-- Bind-mounting volumes
-- Container isolation
+**Problem**: ALB target unhealthy
 
-## License
+**Solution**:
+1. Check Nomad server is running:
+   ```bash
+   ssh ec2-user@<nomad-ip> 'sudo systemctl status nomad'
+   ```
 
-This project is for demonstration purposes. Ensure you have valid HashiCorp Enterprise licenses for production use.
+2. Verify security groups allow ALB → Nomad communication on port 4646
+
+3. Check Nomad is responding:
+   ```bash
+   ssh ec2-user@<nomad-ip> 'curl -k https://localhost:4646/v1/status/leader'
+   ```
+
 
 ## References
 
