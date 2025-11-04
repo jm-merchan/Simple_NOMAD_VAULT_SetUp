@@ -247,6 +247,15 @@ acl {
   enabled = true
 }
 
+vault {
+  enabled          = false
+  address          = "https://${vault_address}:8200"
+  default_identity {
+    aud = ["vault.io"]
+    ttl = "1h"
+  }
+}
+
 # Disable Consul integration
 consul {
   auto_advertise = false

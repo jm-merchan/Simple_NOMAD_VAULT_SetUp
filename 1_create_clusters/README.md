@@ -85,22 +85,25 @@ nomad_license_expires = "2026-12-31"
 
 ## Deployment
 
-### 1. Initialize Terraform
+### 1. Authenticate against AWS via Doormat and Initialize Terraform
 
 ```bash
+doormat login -f
+eval $(doormat aws -a aws_jose.merchan_test export)
+
 terraform init
 ```
 
 ### 2. Plan Deployment
 
 ```bash
-terraform plan
+terraform plan -var-file=terraform.tfvars
 ```
 
 ### 3. Apply Configuration
 
 ```bash
-terraform apply
+terraform apply -auto-approve -var-file=terraform.tfvars
 ```
 
 ### 4. Retrieve Outputs
