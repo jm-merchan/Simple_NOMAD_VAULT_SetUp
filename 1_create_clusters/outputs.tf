@@ -14,11 +14,25 @@ output "elastic_ips" {
   }
 }
 
+output "nomad_client_info" {
+  description = "Nomad client instance information"
+  value = {
+    instance_id       = aws_instance.nomad_client.id
+    public_ip         = aws_instance.nomad_client.public_ip
+    private_ip        = aws_instance.nomad_client.private_ip
+    instance_type     = aws_instance.nomad_client.instance_type
+    availability_zone = aws_instance.nomad_client.availability_zone
+    ami_id            = aws_instance.nomad_client.ami
+    os                = "Amazon Linux 2"
+  }
+}
+
 output "ssh_connection_commands" {
   description = "SSH commands to connect to each instance"
   value = {
     vault_server = "ssh -i ${path.module}/vault-private-key.pem ec2-user@${aws_eip.vault_server_eip.public_ip}"
     nomad_server = "ssh -i ${path.module}/vault-private-key.pem ec2-user@${aws_eip.nomad_server_eip.public_ip}"
+    nomad_client = "ssh -i ${path.module}/vault-private-key.pem ec2-user@${aws_instance.nomad_client.public_ip}"
   }
 }
 

@@ -25,10 +25,10 @@ resource "aws_key_pair" "vault_key_pair" {
 resource "local_file" "private_key" {
   content         = tls_private_key.vault_key.private_key_pem
   filename        = "${path.module}/vault-private-key.pem"
-  file_permission = "0600"
+  file_permission = "0400"
 
   provisioner "local-exec" {
-    command = "chmod 600 ${path.module}/vault-private-key.pem"
+    command = "chmod 400 ${path.module}/vault-private-key.pem"
   }
 }
 
@@ -45,6 +45,27 @@ data "aws_ami" "amazon_linux" {
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+}
+
+# Data source to get the latest Fedora CoreOS AMI
+data "aws_ami" "fedora_coreos" {
+  most_recent = true
+  owners      = ["125523088429"] # Fedora CoreOS official account
+
+  filter {
+    name   = "name"
+    values = ["fedora-coreos-*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 
@@ -220,6 +241,17 @@ locals {
     vault_address            = aws_route53_record.vault.fqdn
     initSecret               = "initSecret-${random_string.random_name.result}"
   })
+
+  nomad_client_user_data = templatefile("${path.module}/templates/nomad_client.sh.tpl", {
+    hostname             = "nomad-client-1"
+    environment          = var.nomad_server.environment
+    region               = var.region
+    nomad_version        = var.nomad_server.nomad_version
+    datacenter           = var.nomad_server.datacenter
+    nomad_server_address = aws_instance.nomad_server.private_ip
+    vault_address        = aws_route53_record.vault.fqdn
+    initSecret           = "initSecret-${random_string.random_name.result}"
+  })
 }
 
 # Vault Server EC2 Instance
@@ -284,6 +316,41 @@ resource "aws_instance" "nomad_server" {
     var.nomad_server.additional_tags
   )
 }
+
+# Nomad Client EC2 Instance (Amazon Linux)
+resource "aws_instance" "nomad_client" {
+  depends_on = [aws_instance.nomad_server]
+
+  ami                         = data.aws_ami.amazon_linux.id
+  instance_type               = "m5.large" # Default client size
+  key_name                    = aws_key_pair.vault_key_pair.key_name
+  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
+  subnet_id                   = aws_subnet.public_az2.id # Use second AZ
+  associate_public_ip_address = true                     # Direct public IP, no EIP
+  iam_instance_profile        = aws_iam_instance_profile.vault_profile.name
+
+  # Use nomad client template for user data
+  user_data = local.nomad_client_user_data
+
+  # Root block device configuration
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 20 # Amazon Linux needs space for packages
+    encrypted   = true
+  }
+
+  tags = merge(
+    {
+      Name        = "nomad-client-1"
+      Environment = var.nomad_server.environment
+      Application = var.nomad_server.application
+      ServerType  = "NomadClient"
+      OS          = "AmazonLinux2"
+    },
+    var.nomad_server.additional_tags
+  )
+}
+
 
 # Elastic IP for vault server
 resource "aws_eip" "vault_server_eip" {

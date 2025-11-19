@@ -58,31 +58,6 @@ variable "vault_server" {
   }
 }
 
-variable "vault_benchmark" {
-  description = "Vault benchmark server configuration"
-  type = object({
-    name            = string
-    instance_type   = string
-    environment     = string
-    application     = string
-    volume_size     = number
-    custom_message  = string
-    additional_tags = map(string)
-  })
-  default = {
-    name           = "vault-benchmark-1"
-    instance_type  = "t3.xlarge"
-    environment    = "development"
-    application    = "vault-benchmark"
-    volume_size    = 30
-    custom_message = "Welcome to Vault Benchmark Server 1 - Performance Testing Suite"
-    additional_tags = {
-      Backup = "hourly"
-      Owner  = "team-performance"
-      Role   = "benchmarkserver"
-    }
-  }
-}
 
 variable "vault_token" {
   description = "Vault root token for authentication"
@@ -126,27 +101,27 @@ variable "vault_license_expires" {
 variable "nomad_server" {
   description = "Nomad server configuration"
   type = object({
-    name                        = string
-    license_key                 = string
-    instance_type               = string
-    environment                 = string
-    application                 = string
-    volume_size                 = number
-    custom_message              = string
-    additional_tags             = map(string)
-    nomad_version               = string
-    datacenter                  = string
+    name            = string
+    license_key     = string
+    instance_type   = string
+    environment     = string
+    application     = string
+    volume_size     = number
+    custom_message  = string
+    additional_tags = map(string)
+    nomad_version   = string
+    datacenter      = string
   })
   default = {
-    name                        = "nomad-server-1"
-    license_key                 = ""
-    instance_type               = "m5.large"
-    environment                 = "development"
-    application                 = "nomad-app"
-    nomad_version               = "1.8.4+ent"
-    datacenter                  = "dc1"
-    volume_size                 = 20
-    custom_message              = "Welcome to Nomad Server 1 - HashiCorp Nomad Service"
+    name           = "nomad-server-1"
+    license_key    = ""
+    instance_type  = "m5.large"
+    environment    = "development"
+    application    = "nomad-app"
+    nomad_version  = "1.8.4+ent"
+    datacenter     = "dc1"
+    volume_size    = 20
+    custom_message = "Welcome to Nomad Server 1 - HashiCorp Nomad Service"
     additional_tags = {
       Backup = "daily"
       Owner  = "team-platform"

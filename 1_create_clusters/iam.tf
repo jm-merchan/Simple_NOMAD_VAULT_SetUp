@@ -120,8 +120,8 @@ resource "aws_iam_policy" "vault_init_secrets_policy" {
           "secretsmanager:UpdateSecret"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${var.region}:*:secret:initSecret-*",
-          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-acl-*"
+          "arn:aws:secretsmanager:${var.region}:*:secret:*",
+          "arn:aws:secretsmanager:${var.region}:*:secret:*"
         ]
         Condition = {
           StringEquals = {
@@ -134,6 +134,7 @@ resource "aws_iam_policy" "vault_init_secrets_policy" {
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
           "secretsmanager:DescribeSecret",
           "secretsmanager:ListSecretVersionIds",
           "secretsmanager:UpdateSecretVersionStage",
@@ -141,8 +142,8 @@ resource "aws_iam_policy" "vault_init_secrets_policy" {
           "secretsmanager:UntagResource"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${var.region}:*:secret:initSecret-*",
-          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-acl-*"
+          "arn:aws:secretsmanager:${var.region}:*:*",
+          "arn:aws:secretsmanager:${var.region}:*:*"
         ]
         Condition = {
           StringEquals = {
@@ -182,28 +183,27 @@ resource "aws_iam_role_policy_attachment" "vault_init_secrets_policy_attachment"
   policy_arn = aws_iam_policy.vault_init_secrets_policy.arn
 }
 
-# IAM policy for Vault to write benchmark results to SSM Parameter Store
-resource "aws_iam_policy" "vault_ssm_policy" {
-  name        = "VaultSSMParameterStorePolicy-${random_string.random_name.result}"
-  description = "IAM policy for HashiCorp Vault Enterprise to write benchmark results to SSM Parameter Store"
-  path        = "/vault/"
+# IAM policy for Nomad TLS certificate access
+resource "aws_iam_policy" "nomad_tls_policy" {
+  name        = "NomadTLSCertificatePolicy-${random_string.random_name.result}"
+  description = "IAM policy for Nomad instances to access and create TLS certificates"
+  path        = "/nomad/"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "VaultSSMParameterAccess"
+        Sid    = "NomadTLSCertificateAccess"
         Effect = "Allow"
         Action = [
-          "ssm:PutParameter",
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:DeleteParameter",
-          "ssm:DescribeParameters"
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds"
         ]
         Resource = [
-          "arn:aws:ssm:${var.region}:*:parameter/benchmark-result-*",
-          "arn:aws:ssm:${var.region}:*:parameter/vault-*"
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-ca-*",
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-client-cert-*",
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-client-key-*"
         ]
         Condition = {
           StringEquals = {
@@ -212,12 +212,18 @@ resource "aws_iam_policy" "vault_ssm_policy" {
         }
       },
       {
-        Sid    = "VaultSSMParameterList"
+        Sid    = "NomadTLSCertificateCreation"
         Effect = "Allow"
         Action = [
-          "ssm:DescribeParameters"
+          "secretsmanager:CreateSecret",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecret"
         ]
-        Resource = "*"
+        Resource = [
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-ca-*",
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-client-cert-*",
+          "arn:aws:secretsmanager:${var.region}:*:secret:nomad-client-key-*"
+        ]
         Condition = {
           StringEquals = {
             "aws:RequestedRegion" = var.region
@@ -228,17 +234,17 @@ resource "aws_iam_policy" "vault_ssm_policy" {
   })
 
   tags = {
-    Name        = "VaultSSMParameterStorePolicy-${random_string.random_name.result}"
+    Name        = "NomadTLSCertificatePolicy-${random_string.random_name.result}"
     Environment = var.environment
-    Purpose     = "vault-enterprise-ssm-access"
-    Owner       = "vault-infrastructure"
-    Application = "vault-enterprise"
+    Purpose     = "nomad-enterprise-tls-access"
+    Owner       = "nomad-infrastructure"
+    Application = "nomad-enterprise"
     Terraform   = "true"
   }
 }
 
-# Attach the SSM Parameter Store policy to the role
-resource "aws_iam_role_policy_attachment" "vault_ssm_policy_attachment" {
+# Attach the Nomad TLS policy to the role
+resource "aws_iam_role_policy_attachment" "nomad_tls_policy_attachment" {
   role       = aws_iam_role.vault_role.name
-  policy_arn = aws_iam_policy.vault_ssm_policy.arn
+  policy_arn = aws_iam_policy.nomad_tls_policy.arn
 }

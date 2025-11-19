@@ -276,7 +276,7 @@ locals {
   nomad_cert = try(acme_certificate.nomad_certificate.certificate_pem, "")
   nomad_ca   = try(acme_certificate.nomad_certificate.issuer_pem, "")
   nomad_key  = try(acme_certificate.nomad_certificate.private_key_pem, "")
-  
+
   # Full certificate chain for ACM (server cert + CA chain)
   nomad_full_chain = "${local.nomad_cert}${local.nomad_ca}"
 }

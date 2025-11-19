@@ -180,6 +180,36 @@ nomad tls cert create -server -region ${datacenter}
 nomad tls cert create -client -region ${datacenter}
 nomad tls cert create -cli -region ${datacenter}
 
+# Store CA certificate in AWS Secrets Manager for clients
+echo "Storing CA certificate in AWS Secrets Manager..."
+aws secretsmanager put-secret-value \
+    --secret-id "nomad-ca-${initSecret}" \
+    --secret-string file:///opt/nomad/tls/nomad-agent-ca.pem \
+    --region "$REGION" 2>/dev/null || \
+aws secretsmanager create-secret \
+    --name "nomad-ca-${initSecret}" \
+    --description "Nomad TLS CA certificate" \
+    --secret-string file:///opt/nomad/tls/nomad-agent-ca.pem \
+    --region "$REGION" >/dev/null 2>&1
+
+# Store client certificates in AWS Secrets Manager for clients
+echo "Storing client certificates in AWS Secrets Manager..."
+aws secretsmanager create-secret \
+  --name "nomad-client-cert-${initSecret}" \
+  --description "Nomad TLS client certificate" \
+  --secret-string file:///opt/nomad/tls/${datacenter}-client-nomad.pem \
+  --region "$REGION"
+
+aws secretsmanager put-secret-value \
+    --secret-id "nomad-client-key-${initSecret}" \
+    --secret-string file:///opt/nomad/tls/${datacenter}-client-nomad-key.pem \
+    --region "$REGION" 2>/dev/null || \
+aws secretsmanager create-secret \
+    --name "nomad-client-key-${initSecret}" \
+    --description "Nomad TLS client private key" \
+    --secret-string file:///opt/nomad/tls/${datacenter}-client-nomad-key.pem \
+    --region "$REGION" >/dev/null 2>&1
+
 # Set permissions
 sudo chown -R root:nomad /opt/nomad/tls
 sudo chmod 0640 /opt/nomad/tls/*-key.pem
@@ -272,26 +302,26 @@ server {
 EOF
 
 # Create Nomad client configuration
-cat <<EOF | sudo tee /etc/nomad.d/client.hcl
-client {
-  enabled = true
-  options {
-    "driver.raw_exec.enable" = "1"
-    "driver.docker.enable"   = "1"
-  }
-}
+#cat <<EOF | sudo tee /etc/nomad.d/client.hcl
+#client {
+#  enabled = true
+#  options {
+#    "driver.raw_exec.enable" = "1"
+#    "driver.docker.enable"   = "1"
+#  }
+#}
 
-plugin "docker" {
-  config {
-    allow_privileged = true
-    volumes { enabled = true }
-    gc {
-      image     = true
-      container = true
-    }
-  }
-}
-EOF
+#plugin "docker" {
+#  config {
+#    allow_privileged = true
+#    volumes { enabled = true }
+#    gc {
+#      image     = true
+#      container = true
+#    }
+#  }
+#}
+#EOF
 
 # Set proper permissions
 sudo chown -R nomad:nomad /etc/nomad.d
