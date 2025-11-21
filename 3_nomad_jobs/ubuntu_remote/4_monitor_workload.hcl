@@ -1,14 +1,20 @@
-job "nginx-check" {
-  datacenters = ["dc1"]
+job "nginx-check-ubuntu" {
+  datacenters = ["remote-site1"]
   type = "service"
 
-  group "nginx-check" {
-    task "nginx-check" {
+  group "nginx-check-ubuntu" {
+    # Constrain to the ubuntu remote client class (adjust if different)
+    constraint {
+      attribute = "${node.class}"
+      operator  = "="
+      value     = "ubuntu-linux-remote-site1-client"
+    }
+    task "nginx-check-ubuntu" {
       driver = "raw_exec"
-      user = "ec2-user"
+      user = "nomadtest"
 
       env {
-        HOME = "/home/ec2-user"
+        HOME = "/home/nomadtest"
       }
 
       config {

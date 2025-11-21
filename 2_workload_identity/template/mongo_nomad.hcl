@@ -1,11 +1,19 @@
 job "mongo" {
   namespace = "default"
+  datacenters = ["remote-site1"]
 
   group "db" {
     network {
       port "db" {
         static = 27017
       }
+    }
+
+    # Constrain group to ubuntu remote clients (move constraint to group level)
+    constraint {
+      attribute = "${node.class}"
+      operator  = "="
+      value     = "ubuntu-linux-remote-site1-client"
     }
 
     service {

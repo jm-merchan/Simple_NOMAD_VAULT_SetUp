@@ -259,6 +259,10 @@ datacenter    = "${datacenter}"
 data_dir      = "/opt/nomad"
 bind_addr     = "0.0.0.0"
 
+advertise {
+  http = "10.2.0.2"
+}
+
 # TLS configuration
 tls {
   http = true

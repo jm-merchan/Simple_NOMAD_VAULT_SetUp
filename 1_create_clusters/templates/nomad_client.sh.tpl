@@ -42,6 +42,26 @@ sudo systemctl enable --now docker
 # Add ec2-user to docker group
 sudo usermod -aG docker ec2-user
 
+# Download CNI plugins
+echo "Downloading CNI plugins..."
+export ARCH_CNI=$( [ $(uname -m) = aarch64 ] && echo arm64 || echo amd64)
+export CNI_PLUGIN_VERSION=v1.7.1
+curl -L -o cni-plugins.tgz "https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGIN_VERSION}/cni-plugins-linux-${ARCH_CNI}-${CNI_PLUGIN_VERSION}.tgz"
+sudo mkdir -p /opt/cni/bin && \
+sudo tar -C /opt/cni/bin -xzf cni-plugins.tgz
+
+sudo echo 1 > /proc/sys/net/bridge/bridge-nf-call-arptables
+sudo echo 1 > /proc/sys/net/bridge/bridge-nf-call-ip6tables
+sudo echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+cat <<EOF | sudo tee /etc/sysctl.d/bridge.conf
+net.bridge.bridge-nf-call-arptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+
+
+
 # Install QEMU for virtual machine support
 echo "Installing QEMU for virtual machine workloads..."
 sudo yum install -y qemu-kvm libvirt virt-manager
@@ -134,6 +154,11 @@ client {
 
   # Node class for targeting
   node_class = "amazon-linux-client"
+
+  # Node meta for placement constraints (ensures jobs requiring vault.version will match)
+  meta {
+    "vault.version" = "0.6.1"
+  }
 
   options {
     "driver.raw_exec.enable" = "1"
