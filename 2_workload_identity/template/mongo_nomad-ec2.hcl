@@ -1,19 +1,19 @@
-job "mongo" {
+job "mongo-ec2" {
   namespace = "default"
-  datacenters = ["remote-site1"]
+  datacenters = ["remote-site1", "dc1"]
 
-  group "db" {
+  group "db-ec2" {
     network {
       port "db" {
         static = 27017
       }
     }
 
-    # Constrain group to ubuntu remote clients (move constraint to group level)
+    # Constrain group to EC2 client for testing Vault integration
     constraint {
       attribute = "${node.class}"
       operator  = "="
-      value     = "ubuntu-linux-remote-site1-client"
+      value     = "amazon-linux-client"
     }
 
     service {
@@ -22,7 +22,7 @@ job "mongo" {
       port     = "db"
     }
 
-    task "mongo" {
+    task "mongo-ec2" {
       driver = "docker"
 
       config {

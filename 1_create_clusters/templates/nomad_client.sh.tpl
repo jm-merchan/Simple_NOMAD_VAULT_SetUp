@@ -194,7 +194,9 @@ plugin "qemu" {
       "-smp",
       "-enable-kvm",
       "-cpu",
-      "-machine"
+      "-machine",
+      "-display",
+      "-net"
     ]
   }
 }
@@ -216,6 +218,16 @@ tls {
 acl {
   enabled    = true
 }
+
+vault {
+  enabled          = true
+  address          = "https://${vault_address}:8200"
+  default_identity {
+    aud = ["vault.io"]
+    ttl = "1h"
+  }
+}
+
 EOF
 
 # Create systemd service for Nomad client

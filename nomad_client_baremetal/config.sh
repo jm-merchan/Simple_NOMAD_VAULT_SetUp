@@ -46,10 +46,33 @@ sudo tar -C /opt/cni/bin -xzf cni-plugins.tgz
 
 # Install QEMU and libvirt on Ubuntu
 echo "Installing QEMU and libvirt (apt)..."
-sudo apt-get install qemu-kvm libvirt-daemon-system libvirt-clients virt-manager genisoimage
+sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
+
+# Install swtpm for TPM 2.0 emulation (required for Windows 11)
+echo "Installing swtpm for TPM 2.0 emulation..."
+sudo apt-get install -y swtpm swtpm-tools
+
+# Install OVMF UEFI firmware (required for Secure Boot)
+echo "Installing OVMF UEFI firmware..."
+sudo apt-get install -y ovmf
 
 # Enable and start libvirtd
 sudo systemctl enable --now libvirtd || sudo systemctl enable --now libvirtd.service || true
+
+# Set up bridge networking for QEMU
+echo "Configuring bridge networking for QEMU..."
+sudo mkdir -p /etc/qemu
+echo "allow br0" | sudo tee /etc/qemu/bridge.conf
+sudo chmod 644 /etc/qemu/bridge.conf
+
+# Set CAP_NET_ADMIN for qemu-bridge-helper (needed for bridge networking)
+if [ -f /usr/lib/qemu/qemu-bridge-helper ]; then
+  sudo chmod u+s /usr/lib/qemu/qemu-bridge-helper
+fi
+
+# Add user to kvm and libvirt groups for QEMU access
+sudo usermod -aG kvm,libvirt $INSTALL_USER || true
+sudo usermod -aG kvm,libvirt root || true
 
 # Verify QEMU installation
 echo "QEMU version:"
@@ -100,6 +123,9 @@ client {
   # Server address (use RPC port 4647 for TLS)
   servers = ["13.134.74.29:4647"]
 
+  # Network interface configuration - use br0 for bridge networking
+  network_interface = "br0"
+
   # Node class for targeting
   node_class = "ubuntu-linux-remote-site1-client"
 
@@ -113,6 +139,16 @@ client {
     "driver.docker.enable"   = "1"
     "driver.qemu.enable"     = "1"
     "driver.podman.enable"   = "0"  # Disable Podman, use Docker
+  }
+}
+
+# Vault integration for workload identity
+vault {
+  enabled          = true
+  address          = "https://vault-eu-west-2-yfrs.jose-merchan.sbx.hashidemos.io:8200"
+  default_identity {
+    aud = ["vault.io"]
+    ttl = "1h"
   }
 }
 
@@ -142,7 +178,20 @@ plugin "qemu" {
       "-smp",
       "-enable-kvm",
       "-cpu",
-      "-machine"
+      "-machine",
+      "-display",
+      "-vnc",
+      "-usb",
+      "-device usb-tablet",
+      "-kernel",
+      "-initrd",
+      "-append",
+      "-net",
+      "-nic",
+      "-nographic",
+      "-chardev",
+      "-tpmdev",
+      "-global"
     ]
   }
 }
@@ -216,26 +265,3 @@ echo "Starting Nomad client service..."
 sudo systemctl daemon-reload
 sudo systemctl enable nomad
 sudo systemctl start nomad
-
-# Wait for service to start
-sleep 10
-
-# Check Nomad status
-echo "Checking Nomad client status..."
-nomad node status
-
-# Set up Nomad environment variables for TLS
-echo "Setting up Nomad environment for TLS..."
-cat <<PROFILE | sudo tee /etc/profile.d/nomad.sh
-export NOMAD_ADDR="https://${nomad_server_address}:4646"
-export NOMAD_CACERT="${USER_HOME}/nomad-agent-ca.pem"
-export NOMAD_CLIENT_CERT="${USER_HOME}/${datacenter}-client-nomad.pem"
-export NOMAD_CLIENT_KEY="${USER_HOME}/${datacenter}-client-nomad-key.pem"
-PROFILE
-
-# Replace placeholders in profile (if any remain)
-sudo sed -i "s/\${nomad_server_address}/${nomad_server_address}/g" /etc/profile.d/nomad.sh || true
-sudo sed -i "s/\${datacenter}/${datacenter}/g" /etc/profile.d/nomad.sh || true
-
-echo "Nomad client installation completed successfully!"
-echo "Client is connecting to server at: https://${nomad_server_address}:4646"
