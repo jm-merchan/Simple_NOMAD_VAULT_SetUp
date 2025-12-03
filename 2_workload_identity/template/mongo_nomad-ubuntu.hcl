@@ -3,6 +3,7 @@ job "mongo-ubuntu" {
   datacenters = ["remote-site1", "dc1"]
 
   group "db-ubuntu" {
+    max_client_disconnect = "1h"
     network {
       port "db" {
         static = 27017
