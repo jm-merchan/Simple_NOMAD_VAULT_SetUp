@@ -92,9 +92,14 @@ sudo chmod 0600 /opt/nomad/tls/dc1-client-nomad-key.pem
 
 # Create directories
 sudo mkdir -p /opt/nomad
-sudo mkdir -p /opt/nomad/data
+sudo mkdir -p /home/nomad-data
 sudo mkdir -p /opt/nomad/tls
 sudo mkdir -p /etc/nomad.d
+
+# Set proper ownership for Nomad data directory
+# Nomad runs as root, but we ensure the directory is accessible
+sudo chown -R root:root /home/nomad-data
+sudo chmod 755 /home/nomad-data
 
 # Download and install Nomad
 echo "Downloading Nomad ${nomad_version}..."
@@ -111,8 +116,8 @@ nomad version
 # Create Nomad client configuration
 echo "Creating Nomad client configuration..."
 cat <<EOF | sudo tee /etc/nomad.d/client.hcl
-# Data directory for Nomad client
-data_dir = "/opt/nomad/data"
+# Data directory for Nomad client (using /home for more space)
+data_dir = "/home/nomad-data"
 
 region     = "dc1"
 datacenter = "remote-site1"
@@ -183,6 +188,7 @@ plugin "qemu" {
       "-vnc",
       "-usb",
       "-device usb-tablet",
+      "-device usb-host",
       "-kernel",
       "-initrd",
       "-append",

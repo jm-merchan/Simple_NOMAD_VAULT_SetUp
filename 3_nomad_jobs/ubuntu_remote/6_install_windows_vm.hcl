@@ -27,6 +27,22 @@ job "windows-server" {
       }
     }
     
+    # Service registration for RDP access
+    service {
+      name     = "windows-server-rdp"
+      port     = "rdp"
+      provider = "nomad"
+      tags     = ["rdp", "windows-server", "remote-desktop"]
+    }
+    
+    # Service registration for VNC access
+    service {
+      name     = "windows-server-vnc"
+      port     = "vnc"
+      provider = "nomad"
+      tags     = ["vnc", "windows-server", "remote-desktop"]
+    }
+    
     # Prestart task to create the virtual hard disk directly in windows-server task directory
     task "prepare-vm" {
       driver = "raw_exec"

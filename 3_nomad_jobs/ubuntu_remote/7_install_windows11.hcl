@@ -31,6 +31,22 @@ job "windows11-bridge" {
       }
     }
     
+    # Service registration for VNC access
+    service {
+      name     = "windows11-install-vnc"
+      port     = "vnc"
+      provider = "nomad"
+      tags     = ["vnc", "windows11", "install", "remote-desktop"]
+    }
+    
+    # Service registration for RDP access
+    service {
+      name     = "windows11-install-rdp"
+      port     = "rdp"
+      provider = "nomad"
+      tags     = ["rdp", "windows11", "install", "remote-desktop"]
+    }
+    
     # Prestart task to create TPM directory and start swtpm in background
     task "setup-tpm" {
       driver = "raw_exec"
@@ -142,15 +158,6 @@ EOF
       resources {
         cpu    = 8000  # 8 CPU cores
         memory = 8192  # 8GB RAM
-      }
-      
-      # Add environment variables for documentation
-      env {
-        STATIC_IP      = "192.168.1.222"
-        SUBNET_MASK    = "255.255.255.0"
-        GATEWAY        = "192.168.1.1"
-        DNS_SERVER     = "192.168.1.1"
-        MAC_ADDRESS    = "52:54:00:12:34:58"
       }
     }
   }

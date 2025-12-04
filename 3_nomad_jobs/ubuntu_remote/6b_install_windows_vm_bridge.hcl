@@ -22,6 +22,14 @@ job "windows-server-bridge" {
       }
     }
     
+    # Service registration for VNC access
+    service {
+      name     = "windows-server-bridge-vnc"
+      port     = "vnc"
+      provider = "nomad"
+      tags     = ["vnc", "windows-server", "bridge", "remote-desktop"]
+    }
+    
     # Main QEMU task to run Windows Server VM with bridge networking
     task "windows-server" {
       driver = "qemu"

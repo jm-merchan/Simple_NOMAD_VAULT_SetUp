@@ -8,6 +8,25 @@ job "home-assistant"{
             port "hasswebui" {
                 static = 8223
             }
+            port "vnc" {
+                static = 5904
+            }
+        }
+        
+        # Service registration for Home Assistant web UI
+        service {
+            name     = "home-assistant-webui"
+            port     = "hasswebui"
+            provider = "nomad"
+            tags     = ["home-assistant", "web-ui"]
+        }
+        
+        # Service registration for VNC access
+        service {
+            name     = "home-assistant-vnc"
+            port     = "vnc"
+            provider = "nomad"
+            tags     = ["vnc", "home-assistant", "remote-desktop"]
         }
         
         task "home-assistant" {
@@ -17,8 +36,11 @@ job "home-assistant"{
                 image_path        = "hassos_ova-4.16.qcow2"
                 accelerator       = "kvm"
                 graceful_shutdown = true
+                port_map {
+                    vnc = 5904
+                }
                 args = [
-                    "-display", "none",
+                    "-vnc", "0.0.0.0:4",
                     "-net", "nic,model=e1000",
                     "-net", "user,hostfwd=tcp::${NOMAD_PORT_hasswebui}-:8123"
                 ]
