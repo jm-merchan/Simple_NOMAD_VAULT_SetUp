@@ -1,4 +1,4 @@
-job "windows11-installed" {
+job "windows11" {
   datacenters = ["remote-site1"]
   type        = "service"
   priority    = "100"
@@ -28,7 +28,7 @@ job "windows11-installed" {
         static = 5905  # Different port from installation job
       }
       port "rdp" {
-        static = 3390  # Different port from installation job
+        static = 3395  # Windows 11 v2 RDP port
       }
     }
     
@@ -113,7 +113,7 @@ EOF
         graceful_shutdown = true
         port_map {
           vnc = 5905
-          rdp = 3390
+          rdp = 3395
         }
         args = [
           "-enable-kvm",
@@ -132,7 +132,7 @@ EOF
           "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
           "-device", "tpm-tis,tpmdev=tpm0",
           # User mode networking with RDP port forwarding
-          "-netdev", "user,id=net0,hostfwd=tcp::3390-:3389",
+          "-netdev", "user,id=net0,hostfwd=tcp::3395-:3389",
           "-device", "e1000,netdev=net0",
           # VNC display
           "-vnc", "0.0.0.0:5",
@@ -150,7 +150,7 @@ EOF
       env {
         VM_TYPE        = "Windows 11 Pro (Installed)"
         VNC_PORT       = "5905"
-        RDP_PORT       = "3390"
+        RDP_PORT       = "3395"
       }
     }
   }

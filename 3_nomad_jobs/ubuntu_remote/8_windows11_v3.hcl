@@ -1,4 +1,4 @@
-job "windows11-installed" {
+job "windows11" {
   datacenters = ["remote-site1"]
   type        = "service"
   priority    = "100"

@@ -4,11 +4,27 @@ job "http-server" {
   priority    = "50"
   
   group "web-server" {
+    max_client_disconnect = "1h"
     
     network {
       mode = "host"
       port "http" {
         static = 8000
+      }
+    }
+    
+    # Service registration for HTTP file server
+    service {
+      name     = "http-file-server"
+      port     = "http"
+      provider = "nomad"
+      tags     = ["http", "file-server", "artifacts"]
+      
+      check {
+        type     = "http"
+        path     = "/"
+        interval = "10s"
+        timeout  = "2s"
       }
     }
     

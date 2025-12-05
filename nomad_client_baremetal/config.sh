@@ -175,6 +175,9 @@ plugin "qemu" {
     image_paths = ["/opt/nomad/qemu"]
     args_allowlist = [
       "-device",
+      "-device qemu-xhci",
+      "-device usb-tablet",
+      "-device usb-host",
       "-drive",
       "-netdev",
       "-cdrom",
@@ -187,8 +190,6 @@ plugin "qemu" {
       "-display",
       "-vnc",
       "-usb",
-      "-device usb-tablet",
-      "-device usb-host",
       "-kernel",
       "-initrd",
       "-append",

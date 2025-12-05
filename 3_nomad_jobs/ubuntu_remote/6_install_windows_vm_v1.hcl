@@ -5,13 +5,24 @@ job "windows-server" {
   
   group "windows-vm" {
     
-    # Increase timeout for large ISO download (~5GB)
-    # Windows Server ISO takes significant time to download
+    # Blue/Green deployment configuration
     update {
-      health_check      = "task_states"
-      min_healthy_time  = "30s"
+      max_parallel      = 1
+      canary            = 1
+      min_healthy_time  = "60s"
       healthy_deadline  = "30m"  # Allow 30 minutes for ISO download
       progress_deadline = "35m"  # Must be greater than healthy_deadline
+      auto_revert       = true
+      auto_promote      = false
+      health_check      = "task_states"
+    }
+    
+    # Restart policy
+    restart {
+      attempts = 2
+      interval = "30m"
+      delay    = "15s"
+      mode     = "fail"
     }
     
     # Network configuration
