@@ -91,7 +91,7 @@ EOF
       
       # Download the disk image with Windows 11 already installed (V2)
       artifact {
-        source      = "http://localhost:8000/windows11-disk-v2.qcow2"
+        source      = "http://localhost:8000/windows11-disk-v3.qcow2"
         destination = "local/windows11-disk.qcow2"
         mode        = "file"
       }
