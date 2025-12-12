@@ -106,11 +106,11 @@ resource "aws_security_group" "boundary_controller" {
 
   # Boundary cluster port (for workers)
   ingress {
-    description = "Boundary cluster communication"
+    description = "Boundary cluster communication from VPC"
     from_port   = 9201
     to_port     = 9201
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Boundary ops/health

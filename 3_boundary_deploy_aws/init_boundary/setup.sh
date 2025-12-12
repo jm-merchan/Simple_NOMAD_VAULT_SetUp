@@ -13,17 +13,25 @@ BOUNDARY_ADDR="$(terraform output -raw boundary_url 2>/dev/null || echo 'boundar
 VAULT_ADDR=$(grep vault_addr terraform.tfvars | cut -d'"' -f2)
 REGION=$(grep region terraform.tfvars | grep -v '#' | head -1 | cut -d'"' -f2)
 
-# Get Vault root token from environment or AWS Secrets Manager
+# Get Vault root token from environment or terraform output
 echo "Retrieving Vault root token..."
 if [ -n "$VAULT_TOKEN" ]; then
     echo "Using VAULT_TOKEN from environment"
 else
-    echo "Retrieving from AWS Secrets Manager..."
-    VAULT_SECRET_ID=$(aws secretsmanager list-secrets --region "$REGION" --query "SecretList[?contains(Name, 'vault') && contains(Name, 'token')].Name" --output text | head -1)
-    if [ -n "$VAULT_SECRET_ID" ]; then
-        VAULT_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$VAULT_SECRET_ID" --region "$REGION" --query SecretString --output text | jq -r '.root_token // .token // .')
+    echo "Retrieving from 1_create_clusters terraform output..."
+    WORKSPACE_ROOT="$(cd "$PARENT_DIR/.." && pwd)"
+    CLUSTERS_DIR="$WORKSPACE_ROOT/1_create_clusters"
+    
+    if [ -d "$CLUSTERS_DIR" ]; then
+        TOKEN_COMMAND=$(cd "$CLUSTERS_DIR" && terraform output -raw retrieve_vault_token 2>/dev/null)
+        if [ -n "$TOKEN_COMMAND" ]; then
+            VAULT_TOKEN=$(eval "$TOKEN_COMMAND")
+        else
+            echo "ERROR: Could not retrieve vault token command from terraform output"
+            exit 1
+        fi
     else
-        echo "ERROR: Could not find Vault token in environment or AWS Secrets Manager"
+        echo "ERROR: Could not find 1_create_clusters directory at $CLUSTERS_DIR"
         exit 1
     fi
 fi

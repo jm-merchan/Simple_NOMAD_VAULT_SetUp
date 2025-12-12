@@ -35,7 +35,7 @@ output "api_url" {
 
 output "cluster_url" {
   description = "Boundary cluster URL for workers"
-  value       = "${var.cluster_name}.${var.dns_zone_name}:9201"
+  value       = "${aws_instance.boundary_controller.private_ip}:9201"
 }
 
 output "fqdn_url" {

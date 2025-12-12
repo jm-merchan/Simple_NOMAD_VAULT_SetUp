@@ -196,7 +196,7 @@ sudo chmod 0640 /etc/boundary.d/boundary.hcl
 
 # Initialize Boundary database
 echo "Initializing Boundary database..."
-sudo -u boundary boundary database init -config /etc/boundary.d/boundary.hcl
+sudo boundary database init -config /etc/boundary.d/boundary.hcl
 
 # Enable and start Boundary service
 echo "Starting Boundary service..."
