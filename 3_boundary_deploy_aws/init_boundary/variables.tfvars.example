@@ -1,0 +1,12 @@
+# Boundary Controller
+boundary_addr = "boundary.jose-merchan.sbx.hashidemos.io:9200"
+
+# Vault Configuration
+vault_addr          = "https://vault-eu-west-2-yfrs.jose-merchan.sbx.hashidemos.io:8200"
+vault_token         = "token_"
+transit_mount_path  = "transit"
+kms_key_recovery    = "boundary-recovery"
+
+# Admin User
+boundary_user     = "admin"
+boundary_password = "ChangeMe123!"
