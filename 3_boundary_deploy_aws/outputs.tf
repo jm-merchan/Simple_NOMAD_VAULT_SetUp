@@ -57,7 +57,7 @@ output "boundary_url" {
 
 output "ingress_worker_address" {
   description = "Ingress worker address for egress workers to connect to"
-  value       = "${module.boundary_worker.worker_public_ip}:9201"
+  value       = "${module.boundary_worker.worker_public_ip}:9202"
 }
 
 output "next_steps" {

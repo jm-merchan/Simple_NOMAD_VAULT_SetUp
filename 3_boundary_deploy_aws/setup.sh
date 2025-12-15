@@ -53,7 +53,10 @@ else
 fi
 
 # Get the actual key pair name from Terraform state (it's dynamically generated)
-KEY_PAIR_NAME=$(terraform state show 'aws_key_pair.vault_key_pair' 2>/dev/null | grep 'key_name' | awk '{print $3}' | tr -d '"' || echo "")
+# Disable terraform color output to avoid ANSI codes
+export TF_CLI_ARGS="-no-color"
+KEY_PAIR_NAME=$(terraform state show 'aws_key_pair.vault_key_pair' 2>/dev/null | grep -E '^\s+key_name\s+=' | awk '{print $3}' | tr -d '"' | sed 's/\x1b\[[0-9;]*m//g' || echo "")
+unset TF_CLI_ARGS
 
 echo "✅ Found infrastructure:"
 echo "   Vault Address: $VAULT_ADDR"
@@ -89,7 +92,7 @@ echo "✅ Vault token retrieved"
 echo ""
 
 # Go back to boundary directory
-cd ../5_boundary_deploy_aws
+cd ../3_boundary_deploy_aws
 
 # Check if terraform.tfvars exists
 if [ -f "terraform.tfvars" ]; then
@@ -100,6 +103,17 @@ if [ -f "terraform.tfvars" ]; then
         echo "Skipping terraform.tfvars creation"
         exit 0
     fi
+fi
+
+# Get db_password from existing terraform.tfvars or generate a random one
+if [ -f "terraform.tfvars" ]; then
+    DB_PASSWORD=$(grep '^db_password' terraform.tfvars | awk -F'"' '{print $2}' || echo "")
+fi
+
+if [ -z "$DB_PASSWORD" ]; then
+    # Generate a random password
+    DB_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=' | head -c 24)
+    echo "ℹ️  Generated random database password"
 fi
 
 # Create terraform.tfvars
@@ -125,7 +139,7 @@ cluster_name     = "boundary"
 
 # Database Configuration
 db_username = "boundary"
-db_password = "ChangeThisSecurePassword123!"  # ⚠️  CHANGE THIS!
+db_password = "$DB_PASSWORD"
 
 # Vault Configuration (from 1_create_clusters)
 vault_addr      = "$VAULT_ADDR"
@@ -133,7 +147,7 @@ vault_token     = "$VAULT_TOKEN"
 vault_namespace = ""
 
 # ACME/Let's Encrypt
-acme_prod = false  # Set to true for production certificates
+acme_prod = true  # Set to true for production certificates
 
 # Instance Types
 controller_instance_type = "t3.medium"
@@ -154,9 +168,10 @@ echo "======================================"
 echo "⚠️  IMPORTANT: Update terraform.tfvars"
 echo "======================================"
 echo ""
+echo "Database password: $DB_PASSWORD"
+echo ""
 echo "Please edit terraform.tfvars and update:"
 echo "  1. boundary_license - Your Boundary Enterprise license"
-echo "  2. db_password - A secure database password"
 echo ""
 echo "Then run:"
 echo "  terraform init"

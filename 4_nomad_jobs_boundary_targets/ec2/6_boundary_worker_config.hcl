@@ -1,5 +1,5 @@
-job "boundary-ubuntu-worker" {
-  datacenters = ["remote-site1"]
+job "boundary-ec2-worker" {
+  datacenters = ["dc1"]
   type        = "service"
 
   group "boundary-worker" {
@@ -23,7 +23,7 @@ job "boundary-ubuntu-worker" {
 
       template {
         data = <<EOT
-{{ with nomadVar "nomad/jobs/boundary-ubuntu-worker" }}
+{{ with nomadVar "nomad/jobs/boundary-ec2-worker" }}
 BOUNDARY_VERSION="{{ .boundary_version }}"
 {{ end }}
 EOT
@@ -47,15 +47,15 @@ EOT
             else
               echo "Version mismatch: installed=$CURRENT_VER, required=$BOUNDARY_VERSION"
               echo "Removing old version..."
-              sudo apt-get remove -y boundary-enterprise boundary || true
+              sudo yum remove -y boundary-enterprise boundary || true
             fi
           fi
 
           echo "Installing Boundary $BOUNDARY_VERSION from releases.hashicorp.com..."
 
-          # Ensure required tools exist
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates curl unzip coreutils
+          # Ensure required tools exist (Amazon Linux 2)
+          sudo yum update -y
+          sudo yum install -y curl unzip
 
           OS="linux"
           ARCH_RAW="$(uname -m)"
@@ -112,7 +112,7 @@ EOF
       # Read configuration from Nomad Variables
       template {
         data = <<EOT
-{{ with nomadVar "nomad/jobs/boundary-ubuntu-worker" }}
+{{ with nomadVar "nomad/jobs/boundary-ec2-worker" }}
 VAULT_TOKEN="{{ .vault_token }}"
 TRANSIT_MOUNT_PATH="{{ .transit_mount_path }}"
 KMS_KEY_WORKER="{{ .kms_key_worker }}"
@@ -130,7 +130,7 @@ disable_mlock = true
 
 worker {
   name        = "egress-worker-{{ env "NOMAD_ALLOC_ID" }}"
-  description = "Boundary Egress Worker on ubuntu_remote"
+  description = "Boundary Egress Worker on ec2"
   
   # Connect to the ingress worker (EC2 cloud worker)
   initial_upstreams = [
@@ -139,8 +139,8 @@ worker {
   
   # This worker will be used as an egress worker for multi-hop
   tags {
-    type     = ["egress", "ubuntu-remote"]
-    location = ["remote-site1"]
+    type     = ["egress", "ec2-remote"]
+    location = ["dc1"]
   }
 }
 
@@ -153,7 +153,7 @@ listener "tcp" {
 # Vault Transit KMS for worker-auth
 kms "transit" {
   purpose            = "worker-auth"
-{{ with nomadVar "nomad/jobs/boundary-ubuntu-worker" }}
+{{ with nomadVar "nomad/jobs/boundary-ec2-worker" }}
   address            = "${vault_addr}"
   token              = "{{ .vault_token }}"
   disable_renewal    = "true"

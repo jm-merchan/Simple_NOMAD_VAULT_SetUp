@@ -15,7 +15,7 @@ EOT
 
 resource "boundary_scope" "org" {
   scope_id    = "global"
-  name        = "global"
+  name        = "org"
   description = "Organization scope"
 
   auto_create_admin_role   = false
@@ -24,7 +24,7 @@ resource "boundary_scope" "org" {
 
 resource "boundary_scope" "project" {
   name                     = "project"
-  description              = "My first project"
+  description              = "Computing at Edge Project"
   scope_id                 = boundary_scope.org.id
   auto_create_admin_role   = false
   auto_create_default_role = false
@@ -39,7 +39,7 @@ resource "boundary_auth_method" "password" {
 
 resource "boundary_account_password" "myuser" {
   name           = "admin"
-  description    = "User account for adminr"
+  description    = "User account for admin"
   login_name     = var.boundary_user
   password       = var.boundary_password
   auth_method_id = boundary_auth_method.password.id
