@@ -81,3 +81,15 @@ variable "ubuntu_ssh_password" {
   type        = string
   sensitive   = true
 }
+
+variable "windows_user" {
+  description = "Username for Windows 11"
+  type        = string
+  default     = "admin"
+}
+
+variable "windows_password" {
+  description = "Password for Windows 11"
+  type        = string
+  sensitive   = true
+}
