@@ -42,5 +42,10 @@ resource "boundary_target" "windows11_vnc" {
   host_source_ids = [
     boundary_host_set_static.ubuntu.id
   ]
-  
+
+
+  brokered_credential_source_ids = [
+    boundary_credential_library_vault.windows11.id
+  ]
+
 }
