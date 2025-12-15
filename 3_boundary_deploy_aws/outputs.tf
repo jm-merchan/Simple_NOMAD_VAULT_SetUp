@@ -55,6 +55,11 @@ output "boundary_url" {
   value       = "https://${aws_route53_record.boundary.fqdn}:9200"
 }
 
+output "ingress_worker_address" {
+  description = "Ingress worker address for egress workers to connect to"
+  value       = "${module.boundary_worker.worker_public_ip}:9201"
+}
+
 output "next_steps" {
   description = "Next steps to configure Boundary"
   value       = <<-EOT
