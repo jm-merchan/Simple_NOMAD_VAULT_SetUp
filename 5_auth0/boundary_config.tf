@@ -22,45 +22,75 @@ resource "boundary_auth_method_oidc" "provider" {
   max_age              = 0
 }
 
-# Configs for Admin User
+# Configs for All Users (excluding admin)
 # ---------------------------
-# ---------------------------
-resource "boundary_account_oidc" "admin" {
-  name           = auth0_user.users["admin"].name
-  description    = "Admin user from Auth0"
+resource "boundary_account_oidc" "users" {
+  for_each = { for k, v in var.auth0_users : k => v if k != "admin" }
+
+  name           = each.value.name
+  description    = "${each.value.name} from Auth0"
   auth_method_id = boundary_auth_method_oidc.provider.id
   issuer         = "https://${data.auth0_tenant.tenant.domain}/"
-  subject        = auth0_user.users["admin"].user_id
+  subject        = auth0_user.users[each.key].user_id
 }
 
-resource "boundary_user" "admin" {
-  name        = boundary_account_oidc.admin.name
-  description = "Admin user from Auth0"
-  account_ids = [boundary_account_oidc.admin.id]
-  scope_id    = "global" #data.boundary_scope.org.id
+resource "boundary_user" "users" {
+  for_each = { for k, v in var.auth0_users : k => v if k != "admin" }
+
+  name        = each.value.name
+  description = "${each.value.name} from Auth0"
+  account_ids = [boundary_account_oidc.users[each.key].id]
+  scope_id    = "global"
 }
 
-resource "boundary_role" "admin_project" {
-  # All Permissions for Admin at Project Scope
-  name          = "admin-project"
-  description   = "Full Admin Permisions at Project level"
-  principal_ids = [boundary_user.admin.id]
+# Role assignments based on user role
+resource "boundary_role" "admin_users_project" {
+  for_each = { for k, v in var.auth0_users : k => v if v.role == "admin" && k != "admin" }
+
+  name          = "${each.key}-project"
+  description   = "Full Admin Permissions at Project level for ${each.value.name}"
+  principal_ids = [boundary_user.users[each.key].id]
   grant_strings = ["ids=*;type=*;actions=*"]
   scope_id      = data.boundary_scope.project.id
 }
 
-resource "boundary_role" "admin_org" {
-  name          = "admin-org"
-  description   = "Full Admin Permissions at Org level"
-  principal_ids = [boundary_user.admin.id]
+resource "boundary_role" "admin_users_org" {
+  for_each = { for k, v in var.auth0_users : k => v if v.role == "admin" && k != "admin" }
+
+  name          = "${each.key}-org"
+  description   = "Full Admin Permissions at Org level for ${each.value.name}"
+  principal_ids = [boundary_user.users[each.key].id]
   grant_strings = ["ids=*;type=*;actions=*"]
   scope_id      = data.boundary_scope.org.id
 }
 
-resource "boundary_role" "admin_global" {
-  name          = "admin-global"
-  description   = "Full Admin Permissions at Global level"
-  principal_ids = [boundary_user.admin.id]
+resource "boundary_role" "admin_users_global" {
+  for_each = { for k, v in var.auth0_users : k => v if v.role == "admin" && k != "admin" }
+
+  name          = "${each.key}-global"
+  description   = "Full Admin Permissions at Global level for ${each.value.name}"
+  principal_ids = [boundary_user.users[each.key].id]
   grant_strings = ["ids=*;type=*;actions=*"]
   scope_id      = "global"
+}
+
+# Security role - read-only access
+resource "boundary_role" "security_users_project" {
+  for_each = { for k, v in var.auth0_users : k => v if v.role == "security" }
+
+  name          = "${each.key}-project-readonly"
+  description   = "Read-only access at Project level for ${each.value.name}"
+  principal_ids = [boundary_user.users[each.key].id]
+  grant_strings = ["ids=*;type=*;actions=read,list"]
+  scope_id      = data.boundary_scope.project.id
+}
+
+resource "boundary_role" "security_users_org" {
+  for_each = { for k, v in var.auth0_users : k => v if v.role == "security" }
+
+  name          = "${each.key}-org-readonly"
+  description   = "Read-only access at Org level for ${each.value.name}"
+  principal_ids = [boundary_user.users[each.key].id]
+  grant_strings = ["ids=*;type=*;actions=read,list"]
+  scope_id      = data.boundary_scope.org.id
 }

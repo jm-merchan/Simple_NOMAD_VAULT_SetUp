@@ -8,15 +8,11 @@ terraform {
       source  = "hashicorp/nomad"
       version = "~> 2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
-}
-
-provider "vault" {
-  # Uses VAULT_ADDR and VAULT_TOKEN env vars
-}
-
-provider "nomad" {
-  # Uses NOMAD_ADDR and NOMAD_TOKEN env vars
 }
 
 data "terraform_remote_state" "clusters" {
@@ -24,6 +20,46 @@ data "terraform_remote_state" "clusters" {
   config = {
     path = "${path.module}/../1_create_clusters/terraform.tfstate"
   }
+}
+
+# Get Vault root token from AWS Secrets Manager
+data "aws_secretsmanager_secret" "vault_root_token" {
+  name = data.terraform_remote_state.clusters.outputs.vault_token_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "vault_root_token" {
+  secret_id = data.aws_secretsmanager_secret.vault_root_token.id
+}
+
+# Get Nomad bootstrap token from AWS Secrets Manager
+data "aws_secretsmanager_secret" "nomad_bootstrap_token" {
+  name = data.terraform_remote_state.clusters.outputs.nomad_token_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "nomad_bootstrap_token" {
+  secret_id = data.aws_secretsmanager_secret.nomad_bootstrap_token.id
+}
+
+# Local values from remote state
+locals {
+  vault_addr  = data.terraform_remote_state.clusters.outputs.service_urls.vault_server.fqdn_url
+  vault_token = jsondecode(data.aws_secretsmanager_secret_version.vault_root_token.secret_string).root_token
+  nomad_addr  = data.terraform_remote_state.clusters.outputs.service_urls.nomad_server.fqdn_url
+  nomad_token = trimspace(data.aws_secretsmanager_secret_version.nomad_bootstrap_token.secret_string)
+}
+
+provider "aws" {
+  region = "eu-west-2"
+}
+
+provider "vault" {
+  address = local.vault_addr
+  token   = local.vault_token
+}
+
+provider "nomad" {
+  address   = local.nomad_addr
+  secret_id = local.nomad_token
 }
 
 # 1. Enable KMIP Secrets Engine

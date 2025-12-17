@@ -11,7 +11,7 @@ resource "boundary_credential_store_vault" "ssh_injection" {
   name        = "vault-ssh-injection-store-${random_string.credential_store_suffix.result}"
   description = "Vault credential store for SSH certificate injection"
   scope_id    = data.boundary_scope.project.id
-  address     = var.vault_addr
+  address     = local.vault_addr
   token       = vault_token.boundary_token.client_token
   namespace   = ""
 }

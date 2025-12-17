@@ -1,9 +1,3 @@
-variable "vault_addr" {
-  description = "Vault server address"
-  type        = string
-  default     = ""
-}
-
 variable "transit_mount_path" {
   description = "Vault Transit mount path"
   type        = string

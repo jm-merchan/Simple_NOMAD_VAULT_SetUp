@@ -69,7 +69,7 @@ kms "transit" {
   namespace          = "${vault_namespace}"
 %{ endif ~}
   token              = "${vault_token}"
-  disable_renewal    = "false"
+  disable_renewal    = "true"
   
   # Key configuration
   mount_path         = "${transit_mount_path}"

@@ -14,15 +14,60 @@ terraform {
       source  = "hashicorp/boundary"
       version = "1.4.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
 }
 
+# Get outputs from 1_create_clusters
+data "terraform_remote_state" "clusters" {
+  backend = "local"
+
+  config = {
+    path = "${path.module}/../1_create_clusters/terraform.tfstate"
+  }
+}
+
+# Get Vault root token from AWS Secrets Manager
+data "aws_secretsmanager_secret" "vault_root_token" {
+  name = data.terraform_remote_state.clusters.outputs.vault_token_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "vault_root_token" {
+  secret_id = data.aws_secretsmanager_secret.vault_root_token.id
+}
+
+# Get Nomad bootstrap token from AWS Secrets Manager
+data "aws_secretsmanager_secret" "nomad_bootstrap_token" {
+  name = data.terraform_remote_state.clusters.outputs.nomad_token_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "nomad_bootstrap_token" {
+  secret_id = data.aws_secretsmanager_secret.nomad_bootstrap_token.id
+}
+
+# Local values from remote state
+locals {
+  vault_addr   = data.terraform_remote_state.clusters.outputs.service_urls.vault_server.fqdn_url
+  vault_token  = jsondecode(data.aws_secretsmanager_secret_version.vault_root_token.secret_string).root_token
+  nomad_addr   = data.terraform_remote_state.clusters.outputs.service_urls.nomad_server.fqdn_url
+  nomad_token  = trimspace(data.aws_secretsmanager_secret_version.nomad_bootstrap_token.secret_string)
+}
+
+provider "aws" {
+  region = "eu-west-2"
+}
+
 provider "vault" {
-  # Uses VAULT_ADDR and VAULT_TOKEN environment variables
+  address = local.vault_addr
+  token   = local.vault_token
 }
 
 provider "nomad" {
-  # Uses NOMAD_ADDR and NOMAD_TOKEN environment variables
+  address   = local.nomad_addr
+  secret_id = local.nomad_token
 }
 
 # Get boundary deployment outputs
@@ -78,7 +123,7 @@ resource "nomad_variable" "boundary_egress_worker_ubuntu" {
 resource "nomad_job" "boundary_egress_worker" {
   jobspec = templatefile("${path.module}/ubuntu_remote/11_boundary_worker_config.hcl", {
     ingress_worker_addr = data.terraform_remote_state.boundary.outputs.ingress_worker_address
-    vault_addr          = var.vault_addr
+    vault_addr          = local.vault_addr
   })
 
   # Ensure the variable is created first
@@ -89,7 +134,7 @@ resource "nomad_job" "boundary_egress_worker" {
 resource "nomad_job" "boundary_egress_worker_ec2" {
   jobspec = templatefile("${path.module}/ec2/6_boundary_worker_config.hcl", {
     ingress_worker_addr = data.terraform_remote_state.boundary.outputs.ingress_worker_address
-    vault_addr          = var.vault_addr
+    vault_addr          = local.vault_addr
   })
 
   # Ensure the variable is created first
