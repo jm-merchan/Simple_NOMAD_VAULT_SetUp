@@ -1,415 +1,399 @@
-# HashiCorp Vault & Nomad Enterprise Deployment
+# HashiCorp Infrastructure Deployment
 
-This Terraform project deploys a complete HashiCorp infrastructure stack on AWS, including:
-- **Vault Enterprise** - Secrets management and encryption
-- **Nomad Enterprise** - Container orchestration and workload scheduling
+This repository contains Terraform configurations for deploying a HashiCorp stack on AWS, including Vault, Nomad, and Boundary with Auth0 OIDC integration.
 
-## Architecture
+## Architecture Overview
 
-### Infrastructure Components
-- **VPC** with public subnets across 2 availability zones
-- **Vault Server** - Single node with auto-unseal (AWS KMS)
-- **Nomad Server** - Single node with Docker driver support
-- **Nomad Client** - CoreOS-based client node for workload execution
-- **Application Load Balancer (ALB)** - Layer 7 load balancer for Nomad with TLS termination
-- **TLS Certificates** - Let's Encrypt (ACME) for both Vault and Nomad (via ALB)
-- **DNS** - Route53 records for both services
-- **Security** - IAM roles, security groups, ACLs enabled
-
-### Features
-- ✅ Vault Enterprise with AWS KMS auto-unseal
-- ✅ Nomad Enterprise with Docker task driver
-- ✅ Application Load Balancer with Let's Encrypt certificate for Nomad
-- ✅ Automatic TLS/mTLS configuration
-  - Vault: Let's Encrypt certificates (direct)
-  - Nomad: Let's Encrypt on ALB, self-signed internally
-- ✅ ACL systems enabled and bootstrapped
-- ✅ Secure credential storage in AWS Secrets Manager
-- ✅ Bridge networking for container workloads
-- ✅ Automated initialization and bootstrap
-- ✅ Nomad client with multiple drivers (Podman, QEMU, raw_exec)
-
-### Network Architecture
+The infrastructure is deployed in multiple stages with dependencies:
 
 ```
-Client → HTTPS (Let's Encrypt) → ALB:443 → HTTPS (self-signed) → Nomad:4646
-                                ALB:4646 → HTTPS (self-signed) → Nomad:4646
-
-Client → HTTPS (Let's Encrypt) → Vault:8200
+1_create_clusters (AWS Infrastructure)
+    ↓
+    ├── 2_workload_identity (Vault/Nomad Workload Identity)
+    ├── 3_boundary_deploy_aws (Boundary Infrastructure)
+    │       ↓
+    │       └── init_boundary (Boundary Initialization)
+    ├── 4_nomad_jobs_boundary_targets (Nomad Jobs & Boundary Workers)
+    ├── 5_auth0 (Auth0 OIDC Integration)
+    └── 6_kmip_test (KMIP Testing)
 ```
-
-**Nomad Access:**
-- External clients connect to ALB using valid Let's Encrypt certificate
-- ALB terminates TLS and re-encrypts to backend
-- Nomad server uses self-signed certificates internally
-- DNS: `nomad-region-xxxx.domain.com` → ALB → Nomad Server
 
 ## Prerequisites
 
-1. **Terraform** >= 1.11
-2. **AWS Account** with appropriate permissions
-3. **Domain** registered in Route53
-4. **License Keys**:
-   - Vault Enterprise license
-   - Nomad Enterprise license
+### Required Tools
+- Terraform >= 1.0
+- AWS CLI configured with appropriate credentials
+- SSH key pair for EC2 instances (created by Terraform Code)
+- Auth0 account (for OIDC integration)
 
-## Configuration
+### AWS Requirements
+- Valid AWS credentials with permissions to create:
+  - VPC, Subnets, Security Groups, Internet Gateways
+  - EC2 instances, EIPs, ALBs
+  - Route53 hosted zones
+  - Secrets Manager secrets
+  - KMS keys
+  - IAM roles and policies
 
-### Required Variables
+### Environment Variables
+- AWS Credentials
+- Auth0 Credentials
 
-Create a `terraform.tfvars` file:
-
-```hcl
-# AWS Configuration
-region            = "eu-west-2"
-dns_zone_name_ext = "example.com"
-owner_email       = "admin@example.com"
-
-# Vault Configuration
-vault_server = {
-  name           = "vault-server-1"
-  license_key    = "02XCV4UU43BK..."  # Your Vault license
-  instance_type  = "m5.large"
-  environment    = "production"
-  application    = "vault-app"
-  vault_version  = "1.20.4+ent"
-  volume_size    = 20
-  custom_message = "HashiCorp Vault Enterprise"
-  additional_tags = {
-    Backup = "daily"
-    Owner  = "platform-team"
-  }
-}
-
-# Nomad Configuration
-nomad_server = {
-  name                        = "nomad-server-1"
-  license_key                 = "02MV4UTC3BK..."  # Your Nomad license
-  instance_type               = "m5.large"
-  environment                 = "production"
-  application                 = "nomad-app"
-  nomad_version               = "1.8.4+ent"
-  nomad_podman_driver_version = "0.6.0"
-  datacenter                  = "dc1"
-  volume_size                 = 20
-  custom_message              = "HashiCorp Nomad Enterprise"
-  additional_tags = {
-    Backup = "daily"
-    Owner  = "platform-team"
-  }
-}
-
-# License Expiration (optional)
-vault_license_expires = "2026-12-31"
-nomad_license_expires = "2026-12-31"
+#### AWS Configuration
+```bash
+export AWS_REGION="eu-west-2"
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
-## Deployment
+#### Auth0 Configuration (for workspace 5_auth0)
+```bash
+export AUTH0_DOMAIN="your-tenant.auth0.com"
+export AUTH0_CLIENT_ID="your-management-api-client-id"
+export AUTH0_CLIENT_SECRET="your-management-api-client-secret"
+```
 
-### 1. Authenticate against AWS via Doormat and Initialize Terraform
+**Note**: All Vault and Nomad credentials are automatically retrieved from AWS Secrets Manager via Terraform remote state. No manual environment variable configuration needed for VAULT_ADDR, VAULT_TOKEN, NOMAD_ADDR, or NOMAD_TOKEN.
 
+## Deployment Steps
+
+### 1. Create Core Infrastructure (`1_create_clusters`)
+
+This workspace creates the base AWS infrastructure with Vault and Nomad clusters.
+
+**What it creates:**
+- VPC with public/private subnets
+- Vault server with Transit encryption engine
+- Nomad server and client instances
+- AWS Secrets Manager secrets for root tokens
+- Route53 DNS records
+- TLS certificates via ACME
+
+**Steps:**
 ```bash
 cd 1_create_clusters
-doormat login -f
-eval $(doormat aws -a <account_name> export)
 
+# Copy and edit terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values:
+# - region
+# - vpc_cidr
+# - dns_zone_name
+# - owner_email
+# - key_pair_name
+
+# Deploy
 terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
+
+# Note the outputs - other workspaces will read from this state
 ```
 
-### 2. Plan Deployment
+**Important Outputs:**
+- `vault_token_secret_name` - AWS Secret name for Vault root token
+- `nomad_token_secret_name` - AWS Secret name for Nomad bootstrap token
+- `service_urls` - URLs for Vault and Nomad services
+- `ssh_connection_commands` - SSH commands to access instances using a generated RSA key
 
+---
+
+### 2. Configure Workload Identity (`2_workload_identity`)
+
+Configures Vault and Nomad workload identity integration.
+
+**Dependencies:** Requires `1_create_clusters` to be deployed.
+
+**What it configures:**
+- Vault policies and roles
+- Nomad workload identity
+- JWT authentication
+
+**Steps:**
 ```bash
-terraform plan -var-file=terraform.tfvars
+cd 2_workload_identity
+
+# Copy and edit variables
+cp terraform.tfvars.example variables.tfvars
+# Edit variables.tfvars if needed
+
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
-### 3. Apply Configuration
+**No environment variables required** - automatically reads Vault/Nomad configuration from `1_create_clusters` remote state.
 
+---
+
+### 3. Deploy Boundary (`3_boundary_deploy_aws`)
+
+Deploys Boundary controllers and workers with Vault Transit KMS integration.
+
+**Dependencies:** Requires `1_create_clusters` to be deployed.
+
+**What it creates:**
+- Boundary controller cluster with PostgreSQL
+- Boundary ingress worker
+- ALB for Boundary
+- Vault Transit keys for Boundary KMS
+- Route53 DNS for Boundary
+
+**Steps:**
 ```bash
-terraform apply -auto-approve -var-file=terraform.tfvars
+cd 3_boundary_deploy_aws
+
+# Copy and edit terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values:
+# - region
+# - key_pair_name
+# - dns_zone_name
+# - owner_email
+# - db_username
+# - db_password
+
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
-### 4. Retrieve Outputs
+**No environment variables required** - automatically reads Vault configuration from `1_create_clusters` remote state.
 
+#### 3a. Initialize Boundary (`3_boundary_deploy_aws/init_boundary`)
+
+Initializes Boundary with scopes, auth methods, and users.
+
+**Dependencies:** Requires `3_boundary_deploy_aws` to be deployed.
+
+**What it creates:**
+- Boundary organization and project scopes
+- Password auth method
+- Initial admin user
+- Host catalogs and targets
+
+**Steps:**
 ```bash
-# Get all outputs
-terraform output
+cd 3_boundary_deploy_aws/init_boundary
 
-# Nomad specific outputs
-terraform output nomad_address
-terraform output nomad_alb_info
+# Copy and edit variables
+cp variables.tfvars.example variables.tfvars
+# Edit variables.tfvars:
+# - region
+# - boundary_user (admin username)
+# - boundary_password (admin password)
 
-# Certificate debug info
-terraform output nomad_certificate_debug
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
-## Post-Deployment Access
+**No environment variables required** - automatically reads all configuration from parent workspace and `1_create_clusters` remote state.
 
-### Vault Access
+---
 
-1. **Retrieve Root Token**:
+### 4. Deploy Nomad Jobs & Boundary Targets (`4_nomad_jobs_boundary_targets`)
+
+Deploys Nomad jobs and configures Boundary egress workers and targets.
+
+**Dependencies:** Requires `1_create_clusters` and `3_boundary_deploy_aws` to be deployed.
+
+**What it creates:**
+- Vault policies and SSH CA configuration
+- Vault tokens for Boundary
+- Nomad variables with credentials
+- Boundary egress workers (via Nomad jobs)
+- Boundary targets for SSH access
+
+**Steps:**
 ```bash
-export VAULT_TOKEN=$(eval $(terraform output -raw retrieve_vault_token))
+cd 4_nomad_jobs_boundary_targets
+
+# Copy and edit variables
+cp terraform.tfvars.example variables.tfvars
+# Edit variables.tfvars with your values:
+# - boundary_addr
+# - boundary_user
+# - boundary_password
+# - ubuntu_host_address
+# - ec2_host_address
+# - ubuntu_ssh_user
+# - ubuntu_ssh_password
+# - windows_user
+# - windows_password
+
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
-2. **Retrieve Vault URL***:
-```bash
-# Get URL from outputs
-export VAULT_ADDR=$(terraform output -json | jq -r .service_urls.value.vault_server.fqdn_url)
+**No environment variables required** - automatically reads Vault/Nomad configuration from `1_create_clusters` remote state.
 
-# Example: https://vault-eu-west-2-xxxx.example.com:8200
+**Note:** Boundary egress workers are deployed as Nomad jobs on EC2 and Ubuntu hosts.
+
+---
+
+### 5. Configure Auth0 OIDC (`5_auth0`)
+
+Configures Auth0 OIDC authentication for Vault, Nomad, and Boundary.
+
+**Dependencies:** Requires `1_create_clusters`, `3_boundary_deploy_aws`, and `init_boundary` to be deployed.
+
+**Prerequisites:**
+- Auth0 account
+- Auth0 Management API credentials
+
+**What it creates:**
+- Auth0 applications for Vault, Nomad, and Boundary
+- Auth0 users (dynamically from variable)
+- Vault OIDC auth method and policies
+- Nomad OIDC auth method and ACL bindings
+- Boundary OIDC auth method and users
+- Identity groups and role assignments
+
+**Steps:**
+```bash
+cd 5_auth0
+
+# Set Auth0 environment variables
+export AUTH0_DOMAIN="your-tenant.auth0.com"
+export AUTH0_CLIENT_ID="your-management-api-client-id"
+export AUTH0_CLIENT_SECRET="your-management-api-client-secret"
+
+# Edit variables.tfvars
+# Configure:
+# - auth0_password (password for all users)
+# - auth0_users (map of users with name/email/role)
+# - boundary_addr
+# - boundary_user
+# - boundary_password
+
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
-3. **Verify**:
+**Environment variables required:**
+- `AUTH0_DOMAIN`
+- `AUTH0_CLIENT_ID`
+- `AUTH0_CLIENT_SECRET`
+
+**Note:** All users defined in `auth0_users` variable will be created in Auth0 and configured in Vault, Nomad, and Boundary (except "admin" user in Boundary).
+
+---
+
+### 6. Test KMIP Functionality (`6_kmip_test`)
+
+Tests Vault KMIP secrets engine with a Nomad job.
+
+**Dependencies:** Requires `1_create_clusters` to be deployed.
+
+**What it creates:**
+- Vault KMIP secrets engine mount
+- KMIP scope and role
+- KMIP credentials
+- Nomad variables with KMIP credentials
+- Nomad job to test KMIP
+
+**Steps:**
 ```bash
-vault status
+cd 6_kmip_test
+
+# Deploy
+terraform init
+terraform plan -var-file=variables.tfvars
+terraform apply -auto-approve -var-file=variables.tfvars
 ```
 
+**No environment variables required** - automatically reads Vault/Nomad configuration from `1_create_clusters` remote state.
 
-### Nomad Access
+---
 
-1. **Retrieve Nomad Bootstrap Token**:
-```bash
-export NOMAD_TOKEN=$(eval $(terraform output -raw retrieve_nomad_token))
+## Remote State Architecture
+
+All workspaces use Terraform local backend but read outputs from other workspaces via `terraform_remote_state` data sources. This eliminates the need for manual environment variable configuration.
+
+### Remote State Flow
+```
+1_create_clusters/terraform.tfstate
+    ├── Stores: Vault/Nomad URLs and AWS Secret names
+    ├── Read by: All other workspaces
+    └── Used for: Automatic credential retrieval from AWS Secrets Manager
+
+AWS Secrets Manager
+    ├── Vault root token (JSON with root_token field)
+    └── Nomad bootstrap token (plaintext)
 ```
 
-2. **Retrieve Nomad URL**: 
-```bash
-# Get FQDN URL (via ALB with valid Let's Encrypt certificate)
-export NOMAD_ADDR=$(terraform output -json | jq -r .service_urls.value.nomad_server.fqdn_url) 
+---
 
-# Create Terraform env for Nomad configuration in following step
-export TF_VAR_nomad_server_address=$(echo $NOMAD_ADDR) 
-```
+## Important Notes
 
-3. **Verify**:
-```bash
-nomad status
-```
+### Credentials Management
+- **Vault root token**: Stored in AWS Secrets Manager as JSON `{"root_token": "..."}`
+- **Nomad bootstrap token**: Stored in AWS Secrets Manager as plaintext
+- All workspaces automatically retrieve credentials via remote state
 
-#### Access Methods
+### Network Architecture
+- Vault: HTTPS on port 8200 with ACME TLS certificates
+- Nomad: HTTPS on port 4646 (ALB) / 4646 (direct) with ACME TLS certificate
+- Boundary: HTTPS on port 9200 (controllers) with ACME TLS, 9201 for worker to controller, 9202 (workers)
 
-**Via Application Load Balancer (Recommended)**
-- URL: `https://nomad-region-xxxx.domain.com` (port 443 or 4646)
-- Certificate: Valid Let's Encrypt certificate
-- No certificate warnings in browser or CLI
+### Boundary Worker Architecture
+- **Ingress Worker**: Runs on AWS EC2, connects to controllers
+- **Egress Workers**: Run as Nomad jobs, connect to ingress worker for multi-hop
+- **Worker Tags**: Used for target filtering (type, location)
 
-**Direct to Server (Advanced)**
-- URL: `https://<nomad-ip>:4646`
-- Certificate: Self-signed (will show warnings)
-- Requires accepting self-signed certificate or adding CA to trust store
+### Auth0 User Roles
+- **admin**: Full permissions in Vault, Nomad, and Boundary
+- **security**: Read-only access in Nomad and Boundary
 
-### Nomad Client Access
+### SSH Access
+- EC2 instances use key-based SSH authentication
+- Private key: `1_create_clusters/vault-private-key.pem`
+- Connection commands available in terraform outputs
 
-The deployment includes a CoreOS-based Nomad client for workload execution:
+---
 
-1. **SSH to Nomad Client**:
-```bash
-# Get SSH command
-terraform output -json ssh_connection_commands | jq -r .nomad_client
+## Cleanup
 
-# Example: ssh -i vault-private-key.pem core@<client-public-ip>
-```
-
-2. **Check Client Status**:
-```bash
-# SSH to client and check status
-nomad node status
-
-# Check Podman (container runtime)
-podman version
-podman ps
-```
-
-3. **Client Configuration**:
-- **OS**: Amazon Linux 2 (standard AWS Linux distribution)
-- **Container Runtime**: Docker (standard container runtime)
-- **Drivers**: 
-  - Docker driver (containers)
-  - QEMU driver (virtual machines)
-  - raw_exec driver (direct command execution)
-- **Networking**: Connected to Nomad server via private IP
-- **QEMU Setup**: QEMU/KVM installed with libvirt for VM workloads
-
-4. **Test Client Drivers**:
-```bash
-# SSH to client
-terraform output -json ssh_connection_commands | jq -r .nomad_client
-
-# Check available drivers
-nomad node status -verbose | grep -A 10 Drivers
-
-# Test Docker driver
-docker version
-docker ps
-
-# Test QEMU driver
-virsh version
-qemu-system-x86_64 --version
-
-# Test raw_exec driver (should be enabled by default)
-nomad run - <<EOF
-job "test-raw-exec" {
-  datacenters = ["dc1"]
-  type = "batch"
-  
-  group "test" {
-    task "hello" {
-      driver = "raw_exec"
-      
-      config {
-        command = "echo"
-        args = ["Hello from raw_exec driver!"]
-      }
-    }
-  }
-}
-EOF
-```
-
-**Note**: The Nomad client is configured with mutual TLS authentication using certificates generated by the Nomad server. All Nomad CLI commands will automatically use the TLS certificates when you SSH to the client.
-
-### 4. Create Workload Identity federation
-This terraform configuration file:
-* Configures Vault for JWT authentication with Nomad and creates a KVv2 engine with a secret.
-* Deploy a Nomad Job that uses the default JWT Authentication with Vault and retrieves the secret from Vault
-
-![enviromental variables in resulting job](image.png)
-
-The execution is as follow
+To destroy all infrastructure, run in reverse order:
 
 ```bash
+# 1. Destroy Auth0 configuration
+cd 5_auth0
+terraform destroy -var-file=variables.tfvars -auto-approve
+
+# 2. Destroy KMIP test
+cd ../6_kmip_test
+terraform destroy
+
+# 3. Destroy Nomad jobs and Boundary targets
+cd ../4_nomad_jobs_boundary_targets
+terraform destroy -var-file=variables.tfvars -auto-approve
+
+# 4. Destroy Boundary initialization
+cd ../3_boundary_deploy_aws/init_boundary
+terraform destroy -var-file=variables.tfvars -auto-approve
+
+# 5. Destroy Boundary infrastructure
+cd ..
+terraform destroy -var-file=variables.tfvars -auto-approve
+
+# 6. Destroy workload identity
 cd ../2_workload_identity
-terraform init
-terraform plan
-terraform apply -auto-approve
+terraform destroy -var-file=variables.tfvars -auto-approve
 
+# 7. Destroy core infrastructure
+cd ../1_create_clusters
+terraform destroy -var-file=variables.tfvars -auto-approve
 ```
 
-## Security
+## License
 
-### TLS/mTLS Configuration
-
-#### Vault
-- Uses Let's Encrypt (ACME) certificates
-- Certificates stored in AWS Secrets Manager
-- Direct TLS termination on Vault server
-
-#### Nomad
-- **External Access**: Let's Encrypt (ACME) certificate on Application Load Balancer
-  - ALB performs TLS termination with valid public certificate
-  - Certificate automatically imported to AWS Certificate Manager (ACM)
-  - Accessible via HTTPS on port 443 and 4646
-- **Internal Communication**: Self-signed certificates
-  - Nomad server uses self-signed certs generated via `nomad tls` commands
-  - mTLS between ALB and Nomad backend
-  - Client certificates for CLI access
-
-#### Certificate Storage
-- **Vault Certificates**: AWS Secrets Manager
-  - `vault-tls-certificate-*` - Public certificate
-  - `vault-tls-private-key-*` - Private key
-  - `vault-tls-ca-certificate-*` - CA chain
-- **Nomad Certificates**: 
-  - Let's Encrypt cert stored in AWS Secrets Manager and ACM
-  - `nomad-tls-certificate-*` - Public certificate
-  - `nomad-tls-private-key-*` - Private key  
-  - `nomad-tls-ca-certificate-*` - CA chain
-  - Self-signed certs stored locally on Nomad server (`/opt/nomad/tls/`)
-
-### ACL Systems
-
-Both Vault and Nomad have ACL systems enabled:
-
-- Bootstrap tokens are stored in AWS Secrets Manager
-- Create policies and tokens for team members
-- Never use bootstrap tokens in production workloads
-
-### IAM Permissions
-
-The deployment creates minimal IAM roles with:
-- Secrets Manager access for licenses and certificates
-- KMS access for Vault auto-unseal
-
-## Monitoring & Logs
-
-### View Logs
-
-```bash
-# Installation logs
-ssh ec2-user@<nomad-ip> 'cat /var/log/nomad-install.log'
-
-# Service logs
-ssh ec2-user@<nomad-ip> 'sudo journalctl -u nomad -f'
-```
-
-### Verify ALB Health
-
-```bash
-# Check ALB target health
-aws elbv2 describe-target-health \
-  --target-group-arn $(terraform output -json nomad_alb_info | jq -r .target_group_arn) \
-  --region eu-west-2
-
-# Check ALB listeners
-aws elbv2 describe-listeners \
-  --load-balancer-arn $(terraform output -json nomad_alb_info | jq -r .alb_arn) \
-  --region eu-west-2
-
-# Verify certificate in ACM
-aws acm describe-certificate \
-  --certificate-arn $(terraform output -json nomad_alb_info | jq -r .acm_cert_arn) \
-  --region eu-west-2
-```
-
-## Troubleshooting
-
-### Nomad Certificate Issues
-
-**Problem**: Browser shows certificate warning when accessing Nomad
-
-**Solution**: 
-1. Ensure you're using the ALB URL (FQDN), not direct IP:
-   ```bash
-   terraform output nomad_address
-   # Use fqdn_url, not direct_https_url
-   ```
-
-2. Check certificate status:
-   ```bash
-   terraform output nomad_certificate_debug
-   terraform output nomad_alb_info
-   ```
-
-3. Verify DNS propagation:
-   ```bash
-   nslookup nomad-region-xxxx.domain.com
-   # Should return ALB DNS name
-   ```
-
-4. Test certificate chain:
-   ```bash
-   openssl s_client -connect nomad-region-xxxx.domain.com:443 -showcerts
-   ```
-
-**Problem**: ALB target unhealthy
-
-**Solution**:
-1. Check Nomad server is running:
-   ```bash
-   ssh ec2-user@<nomad-ip> 'sudo systemctl status nomad'
-   ```
-
-2. Verify security groups allow ALB → Nomad communication on port 4646
-
-3. Check Nomad is responding:
-   ```bash
-   ssh ec2-user@<nomad-ip> 'curl -k https://localhost:4646/v1/status/leader'
-   ```
-
-
-## References
-
-- [Vault Documentation](https://developer.hashicorp.com/vault/docs)
-- [Nomad Documentation](https://developer.hashicorp.com/nomad/docs)
-- [Vault Production Deployment](https://developer.hashicorp.com/vault/tutorials/day-one-raft/raft-deployment-guide)
-- [Nomad Production Deployment](https://developer.hashicorp.com/nomad/tutorials/enterprise/production-deployment-guide-vm-with-consul)
+This project is for demonstration purposes.
