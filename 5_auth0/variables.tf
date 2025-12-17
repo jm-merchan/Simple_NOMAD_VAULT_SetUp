@@ -17,6 +17,16 @@ variable "auth0_email" {
   default = "admin@vaultproject.io"
 }
 
+variable "auth0_users" {
+  description = "Map of Auth0 users to create"
+  type = map(object({
+    name  = string
+    email = string
+    role  = string
+  }))
+  default = {}
+}
+
 variable "boundary_addr" {
   description = "Boundary server address"
   type        = string

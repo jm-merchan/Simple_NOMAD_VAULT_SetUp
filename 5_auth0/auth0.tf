@@ -50,58 +50,15 @@ resource "auth0_client" "boundary" {
   }
 }
 
-resource "auth0_user" "admin" {
-  connection_name = "Username-Password-Authentication"
-  name            = "Vault Admin"
-  email           = "peter@vaultproject.io"
-  email_verified  = true
-  password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"admin\"}}"
-}
+resource "auth0_user" "users" {
+  for_each = var.auth0_users
 
-resource "auth0_user" "chechu" {
   connection_name = "Username-Password-Authentication"
-  name            = "Chechu"
-  email           = "chechu@nomad-test.io"
+  name            = each.value.name
+  email           = each.value.email
   email_verified  = true
   password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"admin\"}}"
-}
-
-resource "auth0_user" "david" {
-  connection_name = "Username-Password-Authentication"
-  name            = "David"
-  email           = "david@nomad-test.io"
-  email_verified  = true
-  password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"admin\"}}"
-}
-
-resource "auth0_user" "nibrass" {
-  connection_name = "Username-Password-Authentication"
-  name            = "Nibrass"
-  email           = "nibrass@nomad-test.io"
-  email_verified  = true
-  password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"admin\"}}"
-}
-
-resource "auth0_user" "jose" {
-  connection_name = "Username-Password-Authentication"
-  name            = "Jose"
-  email           = "jose@nomad-test.io"
-  email_verified  = true
-  password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"admin\"}}"
-}
-
-resource "auth0_user" "security" {
-  connection_name = "Username-Password-Authentication"
-  name            = "Security User"
-  email           = "test.security@vaultproject.io"
-  email_verified  = true
-  password        = var.auth0_password
-  app_metadata    = "{\"roles\": {\"group1\":\"security\"}}"
+  app_metadata    = jsonencode({ roles = { group1 = each.value.role } })
 }
 
 # An Auth0 Client loaded using its ID.

@@ -26,11 +26,11 @@ resource "boundary_auth_method_oidc" "provider" {
 # ---------------------------
 # ---------------------------
 resource "boundary_account_oidc" "admin" {
-  name           = auth0_user.admin.name
+  name           = auth0_user.users["admin"].name
   description    = "Admin user from Auth0"
   auth_method_id = boundary_auth_method_oidc.provider.id
   issuer         = "https://${data.auth0_tenant.tenant.domain}/"
-  subject        = auth0_user.admin.user_id
+  subject        = auth0_user.users["admin"].user_id
 }
 
 resource "boundary_user" "admin" {
