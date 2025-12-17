@@ -29,3 +29,5 @@ Thumbs.db
 *.hclic
 *.html
 *ipynb*
+# Ignore setup scripts
+**/setup.sh
