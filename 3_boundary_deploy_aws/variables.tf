@@ -64,18 +64,7 @@ variable "db_password" {
   sensitive   = true
 }
 
-# Vault configuration
-variable "vault_addr" {
-  description = "Vault server address (use output from 1_create_clusters)"
-  type        = string
-}
-
-variable "vault_token" {
-  description = "Vault token with permissions to create transit keys"
-  type        = string
-  sensitive   = true
-}
-
+# Vault configuration (automatically retrieved from 1_create_clusters)
 variable "vault_namespace" {
   description = "Vault namespace (optional)"
   type        = string

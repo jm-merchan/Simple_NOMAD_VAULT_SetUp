@@ -366,14 +366,18 @@ resource "aws_eip" "vault_server_eip" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# Elastic IP for vault benchmark server
+
 resource "aws_eip" "nomad_server_eip" {
-  instance = aws_instance.nomad_server.id
-  domain   = "vpc"
+  domain = "vpc"
 
   tags = {
     Name = "${var.nomad_server.name}-eip"
   }
 
   depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_eip_association" "nomad_server_eip_assoc" {
+  instance_id   = aws_instance.nomad_server.id
+  allocation_id = aws_eip.nomad_server_eip.id
 }

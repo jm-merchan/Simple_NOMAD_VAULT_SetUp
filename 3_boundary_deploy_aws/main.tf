@@ -272,7 +272,7 @@ module "boundary_controller" {
   tls_ca_pem   = base64encode(acme_certificate.boundary.issuer_pem)
 
   # Vault Transit configuration
-  vault_addr         = var.vault_addr
+  vault_addr         = local.vault_addr
   vault_namespace    = var.vault_namespace
   vault_token        = vault_token.boundary_controller.client_token
   transit_mount_path = vault_mount.transit.path
@@ -298,7 +298,7 @@ module "boundary_worker" {
   controller_address = module.boundary_controller.cluster_url
 
   # Vault Transit configuration
-  vault_addr         = var.vault_addr
+  vault_addr         = local.vault_addr
   vault_namespace    = var.vault_namespace
   vault_token        = vault_token.boundary_worker.client_token
   transit_mount_path = vault_mount.transit.path

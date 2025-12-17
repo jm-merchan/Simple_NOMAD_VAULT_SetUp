@@ -1,9 +1,11 @@
 variable "nomad_server_address" {
-  description = "Nomad server address for JWKS URL (set via TF_VAR_nomad_server_address env var)"
+  description = "Nomad server address for JWKS URL (automatically retrieved from remote state)"
   type        = string
-  
-  validation {
-    condition     = var.nomad_server_address != "" && var.nomad_server_address != "null"
-    error_message = "nomad_server_address must be set. Export: TF_VAR_nomad_server_address=$NOMAD_ADDR"
-  }
+  default     = ""
+}
+
+variable "region" {
+  description = "The AWS region to deploy resources"
+  type        = string
+  default     = "eu-west-2"
 }

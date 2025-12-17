@@ -17,6 +17,16 @@ output "export_nomad_addr_command" {
   value       = "export NOMAD_ADDR=https://nomad-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}"
 }
 
+output "vault_token_secret_name" {
+  description = "Name of the AWS Secret Manager secret storing the Vault token"
+  value       = "initSecret-${random_string.random_name.result}"
+}
+
+output "nomad_token_secret_name" {
+  description = "Name of the AWS Secret Manager secret storing the Nomad ACL bootstrap token"
+  value       = "nomad-acl-initSecret-${random_string.random_name.result}"
+}
+
 
 
 output "ssh_connection_commands" {
