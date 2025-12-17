@@ -260,7 +260,9 @@ data_dir      = "/opt/nomad"
 bind_addr     = "0.0.0.0"
 
 advertise {
-  http = "10.2.0.2"
+  http = "${nomad_server_ip}"
+  rpc  = "${nomad_server_ip}"
+  serf = "${nomad_server_ip}"
 }
 
 # TLS configuration

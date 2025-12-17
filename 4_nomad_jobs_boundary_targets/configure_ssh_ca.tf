@@ -20,12 +20,6 @@ resource "nomad_variable" "configure_ssh_ca_ubuntu" {
 resource "nomad_job" "configure_ssh_ca_ec2" {
   jobspec = file("${path.module}/ec2/7_configure_ssh_ca.hcl")
 
-  hcl2 {
-    vars = {
-      vault_ca_public_key = vault_ssh_secret_backend_ca.boundary.public_key
-    }
-  }
-
   depends_on = [
     vault_ssh_secret_backend_ca.boundary,
     nomad_variable.configure_ssh_ca_ec2
@@ -35,12 +29,6 @@ resource "nomad_job" "configure_ssh_ca_ec2" {
 # Deploy Ubuntu SSH CA configuration job
 resource "nomad_job" "configure_ssh_ca_ubuntu" {
   jobspec = file("${path.module}/ubuntu_remote/12_configure_ssh_ca.hcl")
-
-  hcl2 {
-    vars = {
-      vault_ca_public_key = vault_ssh_secret_backend_ca.boundary.public_key
-    }
-  }
 
   depends_on = [
     vault_ssh_secret_backend_ca.boundary,

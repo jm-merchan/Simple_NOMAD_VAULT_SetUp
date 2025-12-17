@@ -1,6 +1,13 @@
+# HTTP Server Job (deployed first on Ubuntu instance)
+resource "nomad_job" "http_server" {
+  jobspec = file("${path.module}/ubuntu_remote/0_http_server.hcl")
+}
+
 # Windows 11 V4 Job
 resource "nomad_job" "windows11_v4" {
   jobspec = file("${path.module}/ubuntu_remote/8_windows11_v4.hcl")
+  
+  depends_on = [nomad_job.http_server]
 }
 
 # Vault Credential Library for Windows 11

@@ -1,7 +1,14 @@
+# Random string for unique credential store name
+resource "random_string" "credential_store_suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
+
 # Vault credential store for SSH injection (uses token with controller + ssh policies)
 resource "boundary_credential_store_vault" "ssh_injection" {
   depends_on  = [nomad_job.configure_ssh_ca_ec2, nomad_job.configure_ssh_ca_ubuntu]
-  name        = "vault-ssh-injection-store"
+  name        = "vault-ssh-injection-store-${random_string.credential_store_suffix.result}"
   description = "Vault credential store for SSH certificate injection"
   scope_id    = data.boundary_scope.project.id
   address     = var.vault_addr

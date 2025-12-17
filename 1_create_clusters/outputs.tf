@@ -1,31 +1,23 @@
-output "elastic_ips" {
-  description = "Elastic IP addresses assigned to instances"
-  value = {
-    vault_server = {
-      allocation_id = aws_eip.vault_server_eip.id
-      public_ip     = aws_eip.vault_server_eip.public_ip
-      instance_id   = aws_eip.vault_server_eip.instance
-    }
-    nomad_server = {
-      allocation_id = aws_eip.nomad_server_eip.id
-      public_ip     = aws_eip.nomad_server_eip.public_ip
-      instance_id   = aws_eip.nomad_server_eip.instance
-    }
-  }
+output "export_vault_token_command" {
+  description = "Command to export Vault token as environment variable"
+  value       = "export VAULT_TOKEN=$(aws secretsmanager get-secret-value --secret-id initSecret-${random_string.random_name.result} --region ${var.region} --output text --query .value)"
+  sensitive   = true
+}
+output "export_nomad_token_command" {
+  description = "Command to export Nomad ACL bootstrap token as environment variable"
+  value       = "export NOMAD_TOKEN=$(aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-${random_string.random_name.result} --region ${var.region} --output text --query .value)"
+  sensitive   = true
+}
+output "export_vault_addr_command" {
+  description = "Command to export Vault address as environment variable"
+  value       = "export VAULT_ADDR=https://vault-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}:8200"
+}
+output "export_nomad_addr_command" {
+  description = "Command to export Nomad address as environment variable"
+  value       = "export NOMAD_ADDR=https://nomad-${local.region_sanitized}-${random_string.random_name.result}.${local.domain}"
 }
 
-output "nomad_client_info" {
-  description = "Nomad client instance information"
-  value = {
-    instance_id       = aws_instance.nomad_client.id
-    public_ip         = aws_instance.nomad_client.public_ip
-    private_ip        = aws_instance.nomad_client.private_ip
-    instance_type     = aws_instance.nomad_client.instance_type
-    availability_zone = aws_instance.nomad_client.availability_zone
-    ami_id            = aws_instance.nomad_client.ami
-    os                = "Amazon Linux 2"
-  }
-}
+
 
 output "ssh_connection_commands" {
   description = "SSH commands to connect to each instance"
@@ -59,18 +51,4 @@ output "retrieve_vault_token" {
 output "retrieve_nomad_token" {
   description = "Command to retrieve Nomad ACL bootstrap token from AWS Secret Manager"
   value       = "aws secretsmanager get-secret-value --secret-id nomad-acl-initSecret-${random_string.random_name.result} --region ${var.region} --output text --query SecretString"
-}
-
-output "nomad_address" {
-  description = "Nomad server address and connection information"
-  value = {
-    public_ip        = aws_eip.nomad_server_eip.public_ip
-    direct_https_url = "https://${aws_eip.nomad_server_eip.public_ip}:4646"
-    alb_dns_name     = aws_lb.nomad_alb.dns_name
-    alb_https_url    = "https://${aws_lb.nomad_alb.dns_name}"
-    fqdn             = aws_route53_record.nomad.fqdn
-    fqdn_url         = "https://${aws_route53_record.nomad.fqdn}"
-    datacenter       = var.nomad_server.datacenter
-    region           = var.nomad_server.datacenter
-  }
 }

@@ -9,8 +9,12 @@ job "configure-ssh-ca-ec2" {
     task "configure-ca" {
       driver = "raw_exec"
 
-      env {
-        VAULT_CA_KEY = var.vault_ca_public_key
+      template {
+        data = <<-EOT
+          VAULT_CA_KEY={{ with nomadVar "nomad/jobs/configure-ssh-ca-ec2" }}{{ .vault_ca_public_key }}{{ end }}
+        EOT
+        destination = "local/env.txt"
+        env = true
       }
 
       config {
@@ -64,8 +68,4 @@ locals {
       echo "SSH CA configuration completed successfully!"
     EOT
   }
-}
-
-variable "vault_ca_public_key" {
-  type = string
 }

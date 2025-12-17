@@ -199,7 +199,7 @@ resource "aws_security_group" "ec2_sg" {
     from_port   = 5696
     to_port     = 5696
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -240,6 +240,7 @@ locals {
     nomad_license_secret_arn = aws_secretsmanager_secret.nomad_license.arn
     vault_address            = aws_route53_record.vault.fqdn
     initSecret               = "initSecret-${random_string.random_name.result}"
+    nomad_server_ip          = aws_eip.nomad_server_eip.public_ip
   })
 
   nomad_client_user_data = templatefile("${path.module}/templates/nomad_client.sh.tpl", {
@@ -251,6 +252,7 @@ locals {
     nomad_server_address = aws_instance.nomad_server.private_ip
     vault_address        = aws_route53_record.vault.fqdn
     initSecret           = "initSecret-${random_string.random_name.result}"
+    CNI_PLUGIN_VERSION   = "v1.7.1"
   })
 }
 
