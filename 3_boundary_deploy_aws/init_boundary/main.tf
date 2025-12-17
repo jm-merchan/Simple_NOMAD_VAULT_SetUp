@@ -1,17 +1,5 @@
 # https://developer.hashicorp.com/boundary/docs/install-boundary/initialize#create-your-first-login-account
-provider "boundary" {
-  addr                   = var.boundary_addr
-  recovery_kms_hcl       = <<EOT
-kms "transit" {
-  purpose            = "recovery"
-  address            = "${var.vault_addr}"
-  token              = "${var.vault_token}"
-  disable_renewal    = false
-  mount_path         = "${var.transit_mount_path}"
-  key_name           = "${var.kms_key_recovery}"
-}
-EOT
-}
+# Provider configuration is in terraform.tf
 
 resource "boundary_scope" "org" {
   scope_id    = "global"
