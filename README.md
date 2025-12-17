@@ -27,10 +27,14 @@ The infrastructure is deployed in multiple stages with dependencies:
 - Auth0 account (for OIDC integration)
 
 ### AWS Requirements
+- **Route53 Public Hosted Zone**: A public DNS zone must exist before deployment for ACME/Let's Encrypt certificate generation
+  - Example: `example.com` or `subdomain.example.com`
+  - Must be publicly resolvable
+  - Required for automated TLS certificate generation for Vault, Nomad, and Boundary services
 - Valid AWS credentials with permissions to create:
   - VPC, Subnets, Security Groups, Internet Gateways
   - EC2 instances, EIPs, ALBs
-  - Route53 hosted zones
+  - Route53 DNS records (within existing hosted zone)
   - Secrets Manager secrets
   - KMS keys
   - IAM roles and policies
@@ -69,6 +73,10 @@ This workspace creates the base AWS infrastructure with Vault and Nomad clusters
 - Route53 DNS records
 - TLS certificates via ACME
 
+**Prerequisites:**
+- Route53 public hosted zone must already exist in your AWS account
+- DNS zone must be publicly resolvable for ACME certificate validation
+
 **Steps:**
 ```bash
 cd 1_create_clusters
@@ -76,11 +84,11 @@ cd 1_create_clusters
 # Copy and edit terraform.tfvars
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your values:
-# - region
-# - vpc_cidr
-# - dns_zone_name
-# - owner_email
-# - key_pair_name
+# - region: AWS region (e.g., "eu-west-2")
+# - vpc_cidr: VPC CIDR block (e.g., "10.0.0.0/16")
+# - dns_zone_name: Your existing Route53 public hosted zone (e.g., "example.com")
+# - owner_email: Email for Let's Encrypt notifications
+# - key_pair_name: Name for the SSH key pair (will be created)
 
 # Deploy
 terraform init
