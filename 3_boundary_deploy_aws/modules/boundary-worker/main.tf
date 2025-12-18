@@ -120,10 +120,10 @@ resource "aws_instance" "boundary_worker" {
     encrypted   = true
   }
 
-
   lifecycle {
     ignore_changes = [user_data]
   }
+
   tags = merge(
     {
       Name        = "boundary-worker-${random_string.worker.result}"
