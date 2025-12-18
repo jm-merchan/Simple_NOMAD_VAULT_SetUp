@@ -4,7 +4,10 @@ job "http-server" {
   priority    = "50"
   
   group "web-server" {
-    max_client_disconnect = "1h"
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
     
     network {
       mode = "host"

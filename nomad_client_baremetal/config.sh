@@ -134,11 +134,6 @@ client {
   # Node class for targeting
   node_class = "ubuntu-linux-remote-site1-client"
 
-  # Node meta for placement constraints (ensures jobs requiring vault.version will match)
-  meta {
-    "vault.version" = "0.6.1"
-  }
-
   options {
     "driver.raw_exec.enable" = "1"
     "driver.docker.enable"   = "1"

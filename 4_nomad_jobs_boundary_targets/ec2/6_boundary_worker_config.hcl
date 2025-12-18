@@ -5,6 +5,11 @@ job "boundary-ec2-worker" {
   group "boundary-worker" {
     count = 1
 
+    disconnect {
+      lost_after  = "12h"
+      reconcile = "best_score"
+    }
+
     # Restart policy for the worker
     restart {
       attempts = 3

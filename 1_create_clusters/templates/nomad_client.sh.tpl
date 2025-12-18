@@ -154,15 +154,10 @@ client {
   # Node class for targeting
   node_class = "amazon-linux-client"
 
-  # Node meta for placement constraints (ensures jobs requiring vault.version will match)
-  meta {
-    "vault.version" = "0.6.1"
-  }
-
   options {
     "driver.raw_exec.enable" = "1"
     "driver.docker.enable"   = "1"
-    "driver.qemu.enable"     = "1"
+    "driver.qemu.enable"     = "0"
     "driver.podman.enable"   = "0"  # Disable Podman, use Docker
   }
 }
@@ -177,26 +172,6 @@ plugin "docker" {
       image = true
       container = true
     }
-  }
-}
-
-plugin "qemu" {
-  config {
-    image_paths = ["/opt/nomad/qemu"]
-    args_allowlist = [
-      "-device",
-      "-drive",
-      "-netdev",
-      "-cdrom",
-      "-boot",
-      "-m",
-      "-smp",
-      "-enable-kvm",
-      "-cpu",
-      "-machine",
-      "-display",
-      "-net"
-    ]
   }
 }
 

@@ -5,6 +5,11 @@ job "boundary-ubuntu-worker" {
   group "boundary-worker" {
     count = 1
 
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
+
     # Restart policy for the worker
     restart {
       attempts = 3

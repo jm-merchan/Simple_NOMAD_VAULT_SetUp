@@ -4,7 +4,11 @@ job "nginx-web" {
 
   group "demo" {
     count = 3
-    max_client_disconnect = "1h"
+
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
     
     # Standard update strategy
     update {

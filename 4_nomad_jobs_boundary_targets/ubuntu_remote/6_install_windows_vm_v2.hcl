@@ -4,6 +4,10 @@ job "windows-server" {
   priority    = "100"
   
   group "windows-vm" {
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
     
     # Blue/Green deployment configuration
     update {

@@ -4,6 +4,10 @@ job "windows11-bridge" {
   priority    = "100"
   
   group "windows11-vm" {
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
     
     # Increase timeout for large ISO download
     # Windows 11 ISO takes significant time to download

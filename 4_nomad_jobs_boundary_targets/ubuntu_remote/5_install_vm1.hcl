@@ -3,6 +3,11 @@ job "home-assistant"{
     type = "service"
     priority = "100"
 	group "hass-vm" {
+        disconnect {
+            lost_after  = "12h"
+            reconcile   = "keep_original"
+        }
+
         network {
             mode = "host"
             port "hasswebui" {

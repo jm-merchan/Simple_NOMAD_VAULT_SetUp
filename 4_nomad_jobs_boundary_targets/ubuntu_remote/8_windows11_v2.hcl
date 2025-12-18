@@ -4,6 +4,10 @@ job "windows11" {
   priority    = "100"
   
   group "windows11-vm" {
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
     
     # Standard update configuration
     update {

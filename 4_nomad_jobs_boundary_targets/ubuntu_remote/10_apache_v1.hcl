@@ -4,7 +4,11 @@ job "apache" {
   type = "service"
 
   group "webserver" {
-    max_client_disconnect = "1h"
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
+
     count = 3
     
     # Blue/Green deployment strategy

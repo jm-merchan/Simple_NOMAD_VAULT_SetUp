@@ -3,6 +3,11 @@ job "nginx-check-ubuntu" {
   type = "service"
 
   group "nginx-check-ubuntu" {
+    disconnect {
+      lost_after  = "12h"
+      reconcile   = "keep_original"
+    }
+
     # Constrain to the ubuntu remote client class (adjust if different)
     constraint {
       attribute = "${node.class}"

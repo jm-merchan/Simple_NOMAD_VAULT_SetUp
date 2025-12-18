@@ -3,6 +3,11 @@ job "nginx-check-ec2" {
   type = "service"
 
   group "nginx-check-ec2" {
+    disconnect {
+      lost_after  = "12h"
+      reconcile = "best_score"
+    }
+
     task "nginx-check-ec2" {
       driver = "raw_exec"
       user = "ec2-user"
