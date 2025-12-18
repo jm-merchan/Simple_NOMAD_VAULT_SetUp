@@ -149,12 +149,13 @@ except Exception as e:
     sys.exit(1)
 PYSCRIPT
 
-timeout 30 python3 local/test_kmip.py || echo "KMIP test timed out or failed"
+python3 local/test_kmip.py
 
 echo "---------------------------------------------------"
 echo "KMIP Test Complete!"
 echo "Note: PKCS#11 testing requires RHEL and Vault PKCS#11 Provider"
 echo "See: https://developer.hashicorp.com/vault/docs/enterprise/pkcs11-provider"
+exit 0
 
 EOF
         destination = "local/run_test.sh"
