@@ -115,12 +115,16 @@ try:
     client.open()
     print("✓ Successfully connected to Vault KMIP!")
     
-    # Create a Symmetric Key
-    print("Creating symmetric AES-256 key...")
+    # Create a Symmetric Key with unique name
+    import time
+    import random
+    unique_name = f"test-key-{int(time.time())}-{random.randint(1000, 9999)}"
+    
+    print(f"Creating symmetric AES-256 key with name: {unique_name}...")
     key_id = client.create(
         enums.CryptographicAlgorithm.AES,
         256,
-        name="test-key"
+        name=unique_name
     )
     print(f"✓ Created Symmetric Key with ID: {key_id}")
     

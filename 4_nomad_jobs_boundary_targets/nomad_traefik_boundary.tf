@@ -12,13 +12,13 @@ resource "nomad_job" "traefik" {
 
 # Apache Job
 resource "nomad_job" "apache" {
-  jobspec    = file("${path.module}/ubuntu_remote/10_apache_v2.hcl")
+  jobspec    = file("${path.module}/ubuntu_remote/10_apache_v1.hcl")
   depends_on = [nomad_namespace.ns1]
 }
 
 # Nginx Job
 resource "nomad_job" "nginx" {
-  jobspec    = file("${path.module}/ubuntu_remote/9_nginx_v2.hcl")
+  jobspec    = file("${path.module}/ubuntu_remote/9_nginx_v1.hcl")
   depends_on = [nomad_namespace.ns1]
 }
 
