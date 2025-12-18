@@ -1,0 +1,42 @@
+auth0_username = "admin"
+auth0_name     = "admin"
+auth0_email    = "admin@vaultproject.io"
+auth0_password = "<auth0-user-password>"
+
+boundary_addr     = "<boundary_url>"
+boundary_user     = "admin"
+boundary_password = "<boundary_admin_password>"
+
+# Auth0 Users Configuration
+auth0_users = {
+  admin = {
+    name  = "Vault Admin"
+    email = "peter@vaultproject.io"
+    role  = "admin"
+  }
+  chechu = {
+    name  = "Chechu"
+    email = "chechu@nomad-test.io"
+    role  = "admin"
+  }
+  david = {
+    name  = "David"
+    email = "david@nomad-test.io"
+    role  = "admin"
+  }
+  nibrass = {
+    name  = "Nibrass"
+    email = "nibrass@nomad-test.io"
+    role  = "admin"
+  }
+  jose = {
+    name  = "Jose"
+    email = "jose@nomad-test.io"
+    role  = "admin"
+  }
+  security = {
+    name  = "Security User"
+    email = "test.security@vaultproject.io"
+    role  = "security"
+  }
+}

@@ -1,0 +1,37 @@
+# Auto-generated configuration
+
+# AWS Region
+region = "eu-west-2"
+
+# SSH Key (from 1_create_clusters)
+key_pair_name = "vault-key-<random-string>"
+
+# DNS Configuration
+dns_zone_name = "admin.sbx.hashidemos.io"
+owner_email   = "admin@hashicorp.com"
+
+# Boundary Configuration
+boundary_version = "0.21.0+ent"
+boundary_license = "<boundary-license>"
+cluster_name     = "boundary"
+
+# Database Configuration
+db_username = "boundary"
+db_password = "<set-your-db-password>"
+
+
+
+# ACME/Let's Encrypt
+acme_prod = true # Set to true for production certificates
+
+# Instance Types
+controller_instance_type = "t3.medium"
+worker_instance_type     = "t3.medium"
+
+# Additional Tags
+tags = {
+  Terraform   = "true"
+  Environment = "demo"
+  Project     = "boundary"
+  Owner       = "team-platform"
+}

@@ -238,6 +238,10 @@ resource "aws_instance" "boundary_controller" {
     encrypted   = true
   }
 
+  lifecycle {
+    ignore_changes = [user_data]
+  }
+
   tags = merge(
     {
       Name        = "boundary-controller-${random_string.boundary.result}"

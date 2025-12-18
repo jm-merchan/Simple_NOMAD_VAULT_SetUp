@@ -12,10 +12,10 @@ key_pair_name = "my-key-pair"
 # Vault Server Configuration
 vault_server = {
   name           = "vault-server-prod"
-  instance_type  = "m6.2xlarge"
+  instance_type  = "t3.xlarge"
   environment    = "production"
-  application    = "vault-app"
-  license_key    = "vault-key-goes-here"
+  application    = "vault-server"
+  license_key    = "license_key"
   volume_size    = 20
   custom_message = "Welcome to Production Vault Server - HashiCorp Vault Service"
   vault_version  = "1.20.4+ent"
@@ -28,21 +28,24 @@ vault_server = {
   }
 }
 
-# Vault Benchmark Configuration
-vault_benchmark = {
-  name           = "vault-benchmark-prod"
+# Nomad server
+nomad_server = {
+  name           = "nomad-server-prod"
   instance_type  = "t3.xlarge"
   environment    = "production"
-  application    = "vault-benchmark"
+  application    = "nomad-server"
+  nomad_version  = "1.10.5+ent"
+  datacenter     = "dc1"
+  license_key    = "license_key"
   volume_size    = 30
-  custom_message = "Welcome to Production Vault Benchmark Server - Performance Testing Suite"
+  custom_message = "Welcome to Production Nomad Server - HashiCorp Nomad Service"
   additional_tags = {
     Backup     = "hourly"
-    Owner      = "team-performance"
-    Project    = "vault-benchmarking"
     CostCenter = "engineering"
-    Role       = "benchmarkserver"
+    Owner      = "team-infrastructure"
+    Project    = "nomad-infrastructure"
+    Role       = "nomadserver"
   }
 }
 
-owner_email = "email@example.com"
+owner_email = "jose.merchan@hashicorp.com"

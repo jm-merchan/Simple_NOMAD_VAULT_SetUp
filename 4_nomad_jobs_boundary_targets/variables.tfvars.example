@@ -1,0 +1,36 @@
+# Boundary Egress Worker Configuration
+# Vault/Nomad configuration retrieved from: ../1_create_clusters/terraform.tfstate
+# Ingress worker address retrieved from: ../3_boundary_deploy_aws/terraform.tfstate
+
+# Vault Transit configuration
+transit_mount_path = "transit"
+kms_key_worker     = "boundary-worker-auth"
+
+# Boundary version
+boundary_version = "0.21.0+ent"
+
+# Boundary address (same as 3_boundary_deploy_aws/init_boundary/variables.tfvars)
+boundary_addr = "https://boundary.jose-merchan.sbx.hashidemos.io:9200"
+
+# Boundary credentials (same as 3_boundary_deploy_aws/init_boundary/variables.tfvars)
+boundary_user     = "admin"
+boundary_password = "<boundary_password>"
+
+# Windows Credentials
+windows_user     = "<windows11-user>"
+windows_password = "<password>"
+
+# Password auth method ID from init_boundary (only needed if you don't export BOUNDARY_TOKEN)
+# Run: terraform -chdir=../3_boundary_deploy_aws/init_boundary output -raw password_auth_method_id
+boundary_auth_method_id = ""
+
+# Ubuntu host to reach via Boundary (SSH)
+# Example: ubuntu_host_address = "10.0.10.25" or "ubuntu1.internal"
+ubuntu_host_address = "127.0.0.1"
+
+# EC2 host to reach via Boundary (SSH)
+# Example: ec2_host_address = "10.0.10.30" or "ec2-1.internal"
+ec2_host_address = "127.0.0.1"
+
+ubuntu_ssh_password = "<password>"
+ubuntu_ssh_user     = "<user>"

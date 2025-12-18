@@ -1,9 +1,0 @@
-# Boundary Egress Worker Configuration
-# All configuration is retrieved automatically from:
-# - Environment variables: VAULT_ADDR, VAULT_TOKEN, NOMAD_ADDR, NOMAD_TOKEN
-# - Terraform remote state: ../3_boundary_deploy_aws/terraform.tfstate
-
-# Optional overrides:
-# transit_mount_path = "transit"
-# kms_key_worker     = "boundary-worker-auth"
-# boundary_version   = "0.18.1+ent"
