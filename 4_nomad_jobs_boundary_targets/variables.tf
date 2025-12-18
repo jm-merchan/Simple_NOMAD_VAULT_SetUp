@@ -87,3 +87,16 @@ variable "windows_password" {
   type        = string
   sensitive   = true
 }
+
+variable "ipmi_username" {
+  description = "Username for IPMI interface"
+  type        = string
+  default     = "ADMIN"
+}
+
+variable "ipmi_password" {
+  description = "Password for IPMI interface"
+  type        = string
+  sensitive   = true
+  default     = "ADMIN"
+}
