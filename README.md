@@ -379,7 +379,7 @@ terraform destroy -var-file=variables.tfvars -auto-approve
 
 # 2. Destroy KMIP test
 cd ../6_kmip_test
-terraform destroy
+terraform destroy -auto-approve
 
 # 3. Destroy Nomad jobs and Boundary targets
 cd ../4_nomad_jobs_boundary_targets
